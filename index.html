@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Portal escolar para alunos, professores e funcionários." />
+    <meta name="theme-color" content="#155eef" />
+    <title>Portal Escola</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+    <section id="setup-screen" class="setup-screen hidden" aria-labelledby="setup-title">
+      <div class="setup-card">
+        <div class="brand brand-large"><span class="brand-mark">E</span><span>Portal Escola</span></div>
+        <span class="eyebrow">Configuração necessária</span>
+        <h1 id="setup-title">Conecte o seu projeto Supabase</h1>
+        <p>Abra o arquivo <code>config.js</code> e substitua os dois valores de exemplo pela URL e pela chave pública (anon) do seu projeto.</p>
+        <pre><code>window.ESCOLA_CONFIG = {
+  supabaseUrl: "https://SEU-PROJETO.supabase.co",
+  supabaseAnonKey: "SUA-CHAVE-ANON"
+};</code></pre>
+        <p class="muted">As instruções completas estão no README.md.</p>
+      </div>
+    </section>
+
+    <main id="auth-screen" class="auth-screen hidden">
+      <section class="auth-panel auth-visual" aria-label="Apresentação do portal">
+        <div class="brand brand-on-dark"><span class="brand-mark">E</span><span>Portal Escola</span></div>
+        <div class="auth-copy">
+          <span class="eyebrow eyebrow-dark">Ambiente acadêmico</span>
+          <h1>Sua vida escolar em um só lugar.</h1>
+          <p>Acompanhe notas, frequência e turmas com acesso específico para cada perfil.</p>
+          <div class="auth-stats" aria-label="Recursos do portal">
+            <div><strong>3</strong><span>tipos de acesso</span></div>
+            <div><strong>5</strong><span>cursos técnicos</span></div>
+            <div><strong>100%</strong><span>responsivo</span></div>
+          </div>
+        </div>
+        <p class="auth-footer">Gestão escolar simples, segura e organizada.</p>
+      </section>
+
+      <section class="auth-panel auth-form-panel">
+        <button class="icon-button theme-toggle auth-theme" type="button" aria-label="Alternar tema" title="Alternar tema">
+          <i data-lucide="moon"></i>
+        </button>
+        <form id="login-form" class="auth-form">
+          <div class="mobile-brand brand"><span class="brand-mark">E</span><span>Portal Escola</span></div>
+          <span class="eyebrow">Acesso ao sistema</span>
+          <h2>Bem-vindo de volta</h2>
+          <p class="form-intro">Entre com o e-mail e a senha cadastrados pela escola.</p>
+
+          <label class="field">
+            <span>E-mail institucional</span>
+            <span class="input-wrap"><i data-lucide="mail"></i><input id="login-email" type="email" autocomplete="email" placeholder="nome@escola.com" required /></span>
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            <span class="input-wrap"><i data-lucide="lock-keyhole"></i><input id="login-password" type="password" autocomplete="current-password" placeholder="Digite sua senha" minlength="6" required /><button id="toggle-password" class="input-action" type="button" aria-label="Mostrar senha"><i data-lucide="eye"></i></button></span>
+          </label>
+
+          <div class="form-row">
+            <label class="check"><input id="remember-email" type="checkbox" /><span>Lembrar e-mail</span></label>
+            <button id="forgot-password" class="text-button" type="button">Esqueci minha senha</button>
+          </div>
+          <p id="login-error" class="form-error hidden" role="alert"></p>
+          <button id="login-button" class="button button-primary button-block" type="submit"><span>Entrar no portal</span><i data-lucide="arrow-right"></i></button>
+        </form>
+      </section>
+    </main>
+
+    <div id="app-shell" class="app-shell hidden">
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-head">
+          <a class="brand" href="#inicio" aria-label="Portal Escola - início"><span class="brand-mark">E</span><span>Portal Escola</span></a>
+          <button id="close-sidebar" class="icon-button sidebar-close" type="button" aria-label="Fechar menu"><i data-lucide="x"></i></button>
+        </div>
+
+        <nav id="main-nav" class="main-nav" aria-label="Menu principal">
+          <p class="nav-label">Principal</p>
+          <button class="nav-item active" data-view="inicio" type="button"><i data-lucide="layout-dashboard"></i><span>Visão geral</span></button>
+          <button class="nav-item" data-view="boletim" data-roles="aluno" type="button"><i data-lucide="notebook-tabs"></i><span>Meu boletim</span></button>
+          <button class="nav-item" data-view="minha-frequencia" data-roles="aluno" type="button"><i data-lucide="calendar-check-2"></i><span>Minha frequência</span></button>
+
+          <p class="nav-label" data-roles="professor,funcionario">Gestão acadêmica</p>
+          <button class="nav-item" data-view="notas" data-roles="professor,funcionario" type="button"><i data-lucide="clipboard-pen-line"></i><span>Notas</span></button>
+          <button class="nav-item" data-view="frequencia" data-roles="professor,funcionario" type="button"><i data-lucide="calendar-days"></i><span>Frequência</span></button>
+          <button class="nav-item" data-view="turmas" data-roles="professor,funcionario" type="button"><i data-lucide="school"></i><span>Turmas</span></button>
+
+          <p class="nav-label" data-roles="funcionario">Administração</p>
+          <button class="nav-item" data-view="pessoas" data-roles="funcionario" type="button"><i data-lucide="users-round"></i><span>Pessoas</span></button>
+        </nav>
+
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="avatar">--</div>
+          <div class="sidebar-user-copy"><strong id="sidebar-name">Usuário</strong><span id="sidebar-role">Perfil</span></div>
+          <button id="logout-button" class="icon-button" type="button" aria-label="Sair" title="Sair"><i data-lucide="log-out"></i></button>
+        </div>
+      </aside>
+      <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+      <div class="workspace">
+        <header class="topbar">
+          <button id="open-sidebar" class="icon-button menu-button" type="button" aria-label="Abrir menu"><i data-lucide="menu"></i></button>
+          <div class="topbar-title"><span id="page-kicker">Portal acadêmico</span><h1 id="page-title">Visão geral</h1></div>
+          <div class="topbar-actions">
+            <button id="refresh-button" class="icon-button" type="button" aria-label="Atualizar dados" title="Atualizar"><i data-lucide="refresh-cw"></i></button>
+            <button class="icon-button theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema"><i data-lucide="moon"></i></button>
+            <div id="top-avatar" class="avatar avatar-small">--</div>
+          </div>
+        </header>
+
+        <main class="content">
+          <section id="loading-state" class="loading-state hidden" aria-live="polite"><span class="spinner"></span><p>Carregando informações...</p></section>
+
+          <section class="view active" data-view-panel="inicio">
+            <div class="welcome-strip">
+              <div><span id="today-label" class="eyebrow"></span><h2 id="welcome-title">Olá!</h2><p id="welcome-subtitle">Aqui está o resumo da sua vida escolar.</p></div>
+              <div class="school-seal" aria-hidden="true"><i data-lucide="graduation-cap"></i></div>
+            </div>
+            <div id="metric-grid" class="metric-grid"></div>
+            <div class="dashboard-grid">
+              <article class="panel panel-wide">
+                <div class="panel-head"><div><span class="eyebrow">Desempenho</span><h3>Resumo acadêmico</h3></div><span id="academic-status" class="status-badge status-neutral">Atualizado agora</span></div>
+                <div id="performance-content" class="performance-content"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head"><div><span class="eyebrow">Acesso rápido</span><h3>Atalhos</h3></div></div>
+                <div id="quick-actions" class="quick-actions"></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" data-view-panel="pessoas">
+            <div class="section-toolbar">
+              <div><h2>Cadastro de pessoas</h2><p>Adicione alunos, professores e funcionários ao portal.</p></div>
+              <button id="new-person-button" class="button button-primary" type="button"><i data-lucide="user-plus"></i><span>Nova pessoa</span></button>
+            </div>
+            <div class="filter-bar">
+              <label class="search-field"><i data-lucide="search"></i><input id="people-search" type="search" placeholder="Buscar por nome, e-mail ou matrícula" /></label>
+              <label class="compact-select"><span class="sr-only">Filtrar por perfil</span><select id="people-role-filter"><option value="todos">Todos os perfis</option><option value="aluno">Alunos</option><option value="professor">Professores</option><option value="funcionario">Funcionários</option></select></label>
+            </div>
+            <div class="table-card"><div class="table-scroll"><table><thead><tr><th>Pessoa</th><th>Perfil</th><th>Matrícula</th><th>Turma/Setor</th><th>Status</th><th class="align-right">Ações</th></tr></thead><tbody id="people-table-body"></tbody></table></div><div id="people-empty" class="empty-state hidden"><i data-lucide="users"></i><h3>Nenhuma pessoa encontrada</h3><p>Altere os filtros ou cadastre uma nova pessoa.</p></div></div>
+          </section>
+
+          <section class="view" data-view-panel="turmas">
+            <div class="section-toolbar"><div><h2>Turmas e cursos</h2><p>Consulte as turmas por curso, módulo, turno e período.</p></div><button id="new-class-button" class="button button-primary" data-roles="funcionario" type="button"><i data-lucide="plus"></i><span>Nova turma</span></button></div>
+            <div class="filter-bar"><label class="search-field"><i data-lucide="search"></i><input id="class-search" type="search" placeholder="Buscar turma ou curso" /></label><label class="compact-select"><span class="sr-only">Filtrar por turno</span><select id="class-shift-filter"><option value="todos">Todos os períodos</option><option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option></select></label></div>
+            <div id="class-grid" class="class-grid"></div><div id="class-empty" class="empty-state hidden"><i data-lucide="school"></i><h3>Nenhuma turma encontrada</h3></div>
+            <article class="panel assignments-panel" data-roles="funcionario">
+              <div class="panel-head"><div><span class="eyebrow">Professores</span><h3>Vínculos com turmas e disciplinas</h3></div><button id="new-assignment-button" class="button button-secondary" type="button"><i data-lucide="link-2"></i><span>Novo vínculo</span></button></div>
+              <div class="table-scroll"><table><thead><tr><th>Professor</th><th>Turma</th><th>Disciplina</th><th class="align-right">Ações</th></tr></thead><tbody id="assignments-table-body"></tbody></table></div>
+              <div id="assignments-empty" class="empty-state hidden"><i data-lucide="link-2-off"></i><h3>Nenhum vínculo cadastrado</h3><p>Vincule professores para liberar as turmas em seus acessos.</p></div>
+            </article>
+          </section>
+
+          <section class="view" data-view-panel="notas">
+            <div class="section-toolbar"><div><h2>Gerenciamento de notas</h2><p>Registre e acompanhe as avaliações dos alunos.</p></div><button id="new-grade-button" class="button button-primary" type="button"><i data-lucide="plus"></i><span>Lançar nota</span></button></div>
+            <div class="filter-bar"><label class="compact-select select-grow"><span class="sr-only">Filtrar por turma</span><select id="grade-class-filter"><option value="todos">Todas as turmas</option></select></label><label class="compact-select select-grow"><span class="sr-only">Filtrar por bimestre</span><select id="grade-term-filter"><option value="todos">Todos os bimestres</option><option value="1">1º bimestre</option><option value="2">2º bimestre</option><option value="3">3º bimestre</option><option value="4">4º bimestre</option></select></label></div>
+            <div class="table-card"><div class="table-scroll"><table><thead><tr><th>Aluno</th><th>Disciplina</th><th>Avaliação</th><th>Bimestre</th><th>Nota</th><th>Situação</th><th class="align-right">Ações</th></tr></thead><tbody id="grades-table-body"></tbody></table></div><div id="grades-empty" class="empty-state hidden"><i data-lucide="notebook-pen"></i><h3>Nenhuma nota lançada</h3></div></div>
+          </section>
+
+          <section class="view" data-view-panel="frequencia">
+            <div class="section-toolbar"><div><h2>Faltas e presença</h2><p>Faça a chamada e consulte o histórico de frequência.</p></div><button id="new-attendance-button" class="button button-primary" type="button"><i data-lucide="calendar-plus"></i><span>Registrar chamada</span></button></div>
+            <div class="filter-bar"><label class="compact-select select-grow"><span class="sr-only">Filtrar por turma</span><select id="attendance-class-filter"><option value="todos">Todas as turmas</option></select></label><label class="date-field"><i data-lucide="calendar"></i><input id="attendance-date-filter" type="date" /></label></div>
+            <div class="table-card"><div class="table-scroll"><table><thead><tr><th>Data</th><th>Aluno</th><th>Turma</th><th>Disciplina</th><th>Registro</th><th>Observação</th><th class="align-right">Ações</th></tr></thead><tbody id="attendance-table-body"></tbody></table></div><div id="attendance-empty" class="empty-state hidden"><i data-lucide="calendar-x"></i><h3>Nenhum registro encontrado</h3></div></div>
+          </section>
+
+          <section class="view" data-view-panel="boletim">
+            <div class="section-toolbar"><div><h2>Meu boletim</h2><p>Notas e médias organizadas por disciplina e bimestre.</p></div><button id="print-report-button" class="button button-secondary" type="button"><i data-lucide="printer"></i><span>Imprimir</span></button></div>
+            <div id="report-summary" class="metric-grid compact-metrics"></div>
+            <div class="table-card"><div class="table-scroll"><table><thead><tr><th>Disciplina</th><th>1º bim.</th><th>2º bim.</th><th>3º bim.</th><th>4º bim.</th><th>Média</th><th>Situação</th></tr></thead><tbody id="report-table-body"></tbody></table></div><div id="report-empty" class="empty-state hidden"><i data-lucide="file-question"></i><h3>Seu boletim ainda não possui notas</h3></div></div>
+          </section>
+
+          <section class="view" data-view-panel="minha-frequencia">
+            <div class="section-toolbar"><div><h2>Minha frequência</h2><p>Acompanhe presenças e faltas em cada disciplina.</p></div></div>
+            <div id="student-attendance-summary" class="metric-grid compact-metrics"></div>
+            <div id="student-attendance-list" class="attendance-list"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="person-dialog" class="modal">
+      <form id="person-form" class="modal-card">
+        <div class="modal-head"><div><span class="eyebrow">Cadastro</span><h2>Nova pessoa</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar"><i data-lucide="x"></i></button></div>
+        <div class="form-grid">
+          <label class="field field-span-2"><span>Nome completo</span><input name="full_name" type="text" autocomplete="name" required /></label>
+          <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" required /></label>
+          <label class="field"><span>Senha inicial</span><input name="password" type="password" minlength="6" required /><small>Mínimo de 6 caracteres</small></label>
+          <label class="field"><span>Perfil</span><select name="role" required><option value="aluno">Aluno</option><option value="professor">Professor</option><option value="funcionario">Funcionário</option></select></label>
+          <label class="field"><span>Matrícula</span><input name="registration" type="text" required /></label>
+          <label class="field student-only field-span-2"><span>Turma</span><select name="class_id" id="person-class-select"><option value="">Selecione uma turma</option></select></label>
+          <label class="field teacher-only hidden field-span-2"><span>Especialidade</span><input name="specialty" type="text" placeholder="Ex.: Desenvolvimento Web" /></label>
+          <label class="field employee-only hidden"><span>Cargo</span><input name="job_title" type="text" placeholder="Ex.: Secretaria" /></label>
+          <label class="field employee-only hidden"><span>Setor</span><input name="department" type="text" placeholder="Ex.: Acadêmico" /></label>
+        </div>
+        <p id="person-form-error" class="form-error hidden" role="alert"></p>
+        <div class="modal-actions"><button class="button button-secondary modal-close" type="button">Cancelar</button><button class="button button-primary" type="submit"><span>Cadastrar pessoa</span></button></div>
+      </form>
+    </dialog>
+
+    <dialog id="class-dialog" class="modal">
+      <form id="class-form" class="modal-card modal-small">
+        <div class="modal-head"><div><span class="eyebrow">Organização</span><h2>Nova turma</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar"><i data-lucide="x"></i></button></div>
+        <div class="form-grid"><label class="field field-span-2"><span>Curso</span><select name="course_id" id="class-course-select" required></select></label><label class="field"><span>Módulo</span><select name="module" required><option value="1">1º módulo</option><option value="2">2º módulo</option><option value="3">3º módulo</option></select></label><label class="field"><span>Período</span><select name="shift" required><option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option></select></label><label class="field"><span>Ano</span><input name="school_year" type="number" min="2020" max="2100" required /></label><label class="field"><span>Sala</span><input name="room" type="text" placeholder="Ex.: Sala 08" /></label></div>
+        <p id="class-form-error" class="form-error hidden" role="alert"></p><div class="modal-actions"><button class="button button-secondary modal-close" type="button">Cancelar</button><button class="button button-primary" type="submit">Criar turma</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="grade-dialog" class="modal">
+      <form id="grade-form" class="modal-card modal-small">
+        <div class="modal-head"><div><span class="eyebrow">Avaliação</span><h2>Lançar nota</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar"><i data-lucide="x"></i></button></div>
+        <input name="id" type="hidden" />
+        <div class="form-grid"><label class="field field-span-2"><span>Aluno</span><select name="student_id" id="grade-student-select" required></select></label><label class="field field-span-2"><span>Disciplina</span><select name="subject_id" id="grade-subject-select" required></select></label><label class="field"><span>Bimestre</span><select name="term" required><option value="1">1º bimestre</option><option value="2">2º bimestre</option><option value="3">3º bimestre</option><option value="4">4º bimestre</option></select></label><label class="field"><span>Nota (0 a 10)</span><input name="score" type="number" min="0" max="10" step="0.1" required /></label><label class="field field-span-2"><span>Avaliação</span><input name="assessment" type="text" placeholder="Ex.: Prova bimestral" required /></label></div>
+        <p id="grade-form-error" class="form-error hidden" role="alert"></p><div class="modal-actions"><button class="button button-secondary modal-close" type="button">Cancelar</button><button class="button button-primary" type="submit">Salvar nota</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="assignment-dialog" class="modal">
+      <form id="assignment-form" class="modal-card modal-small">
+        <div class="modal-head"><div><span class="eyebrow">Organização</span><h2>Vincular professor</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar"><i data-lucide="x"></i></button></div>
+        <div class="form-grid"><label class="field field-span-2"><span>Professor</span><select name="teacher_id" id="assignment-teacher-select" required></select></label><label class="field field-span-2"><span>Turma</span><select name="class_id" id="assignment-class-select" required></select></label><label class="field field-span-2"><span>Disciplina</span><select name="subject_id" id="assignment-subject-select" required></select></label></div>
+        <p id="assignment-form-error" class="form-error hidden" role="alert"></p><div class="modal-actions"><button class="button button-secondary modal-close" type="button">Cancelar</button><button class="button button-primary" type="submit">Salvar vínculo</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="attendance-dialog" class="modal">
+      <form id="attendance-form" class="modal-card modal-small">
+        <div class="modal-head"><div><span class="eyebrow">Chamada</span><h2>Registrar frequência</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar"><i data-lucide="x"></i></button></div>
+        <input name="id" type="hidden" />
+        <div class="form-grid"><label class="field field-span-2"><span>Aluno</span><select name="student_id" id="attendance-student-select" required></select></label><label class="field field-span-2"><span>Disciplina</span><select name="subject_id" id="attendance-subject-select" required></select></label><label class="field"><span>Data</span><input name="attendance_date" type="date" required /></label><label class="field"><span>Registro</span><select name="status" required><option value="presente">Presente</option><option value="falta">Falta</option><option value="justificada">Falta justificada</option></select></label><label class="field field-span-2"><span>Observação</span><textarea name="notes" rows="3" placeholder="Opcional"></textarea></label></div>
+        <p id="attendance-form-error" class="form-error hidden" role="alert"></p><div class="modal-actions"><button class="button button-secondary modal-close" type="button">Cancelar</button><button class="button button-primary" type="submit">Salvar registro</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="modal confirm-modal">
+      <div class="modal-card modal-confirm"><span class="confirm-icon"><i data-lucide="triangle-alert"></i></span><h2 id="confirm-title">Confirmar exclusão</h2><p id="confirm-message">Esta ação não poderá ser desfeita.</p><div class="modal-actions"><button id="confirm-cancel" class="button button-secondary" type="button">Cancelar</button><button id="confirm-action" class="button button-danger" type="button">Excluir</button></div></div>
+    </dialog>
+
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="config.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
