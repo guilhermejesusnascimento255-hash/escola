@@ -1,7 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const config = window.ESCOLA_CONFIG ?? {};
-
 const isConfigured =
   config.supabaseUrl?.startsWith("https://") &&
   !config.supabaseUrl.includes("SEU-PROJETO") &&
@@ -10,7 +9,6 @@ const isConfigured =
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-
 const setupScreen = $("#setup-screen");
 const authScreen = $("#auth-screen");
 const appShell = $("#app-shell");
@@ -23,17 +21,9 @@ if (!isConfigured) {
 }
 
 async function startApplication() {
-  const supabase = createClient(
-    config.supabaseUrl,
-    config.supabaseAnonKey,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    }
-  );
+  const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
 
   const state = {
     supabase,
@@ -54,20 +44,13 @@ async function startApplication() {
   bindStaticEvents(state);
   applySavedTheme();
 
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (session) {
-    await enterApp(state, session);
-  } else {
-    showAuth();
-  }
+  if (session) await enterApp(state, session);
+  else showAuth();
 
   supabase.auth.onAuthStateChange(async (event, newSession) => {
-    if (event === "SIGNED_OUT") {
-      showAuth();
-    }
+    if (event === "SIGNED_OUT") showAuth();
 
     if (event === "PASSWORD_RECOVERY") {
       toast(
@@ -88,26 +71,17 @@ async function startApplication() {
 
   async function enterApp(currentState, session) {
     currentState.session = session;
-
     setLoading(true);
 
     const { data: profile, error } = await supabase
       .from("perfis")
-      .select(`
-        id,
-        full_name:nome_completo,
-        email,
-        role:tipo_usuario,
-        status:situacao
-      `)
+      .select("id, full_name:nome_completo, email, role:tipo_usuario, status:situacao")
       .eq("id", session.user.id)
       .single();
 
     if (error || !profile) {
       setLoading(false);
-
       await supabase.auth.signOut();
-
       showAuth();
 
       setFormError(
@@ -120,9 +94,7 @@ async function startApplication() {
 
     if (profile.status !== "ativo") {
       setLoading(false);
-
       await supabase.auth.signOut();
-
       showAuth();
 
       setFormError(
@@ -144,7 +116,6 @@ async function startApplication() {
     await loadAllData(currentState);
 
     navigateTo(currentState, "inicio");
-
     setLoading(false);
   }
 }
@@ -154,27 +125,21 @@ function bindStaticEvents(state) {
     event.preventDefault();
 
     const button = $("#login-button");
-
     const email = $("#login-email").value.trim();
     const password = $("#login-password").value;
 
     setFormError($("#login-error"), "");
     setButtonLoading(button, true, "Entrando...");
 
-    const { error } =
-      await state.supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+    const { error } = await state.supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
     setButtonLoading(button, false, "Entrar no portal");
 
     if (error) {
-      setFormError(
-        $("#login-error"),
-        friendlyAuthError(error.message)
-      );
-
+      setFormError($("#login-error"), friendlyAuthError(error.message));
       return;
     }
 
@@ -185,8 +150,7 @@ function bindStaticEvents(state) {
     }
   });
 
-  const savedEmail =
-    localStorage.getItem("escola-email");
+  const savedEmail = localStorage.getItem("escola-email");
 
   if (savedEmail) {
     $("#login-email").value = savedEmail;
@@ -195,12 +159,9 @@ function bindStaticEvents(state) {
 
   $("#toggle-password").addEventListener("click", () => {
     const input = $("#login-password");
+    const showing = input.type === "text";
 
-    const showing =
-      input.type === "text";
-
-    input.type =
-      showing ? "password" : "text";
+    input.type = showing ? "password" : "text";
 
     $("#toggle-password").innerHTML =
       `<i data-lucide="${showing ? "eye" : "eye-off"}"></i>`;
@@ -208,52 +169,39 @@ function bindStaticEvents(state) {
     refreshIcons();
   });
 
-  $("#forgot-password").addEventListener(
-    "click",
-    async () => {
-      const email =
-        $("#login-email").value.trim();
+  $("#forgot-password").addEventListener("click", async () => {
+    const email = $("#login-email").value.trim();
 
-      if (!email) {
-        setFormError(
-          $("#login-error"),
-          "Digite seu e-mail para receber o link de recuperação."
-        );
+    if (!email) {
+      setFormError(
+        $("#login-error"),
+        "Digite seu e-mail para receber o link de recuperação."
+      );
 
-        $("#login-email").focus();
-
-        return;
-      }
-
-      const { error } =
-        await state.supabase.auth.resetPasswordForEmail(
-          email,
-          {
-            redirectTo:
-              `${location.origin}${location.pathname}`
-          }
-        );
-
-      if (error) {
-        setFormError(
-          $("#login-error"),
-          error.message
-        );
-      } else {
-        toast(
-          "Link enviado",
-          "Confira a caixa de entrada e a pasta de spam.",
-          "success"
-        );
-      }
+      $("#login-email").focus();
+      return;
     }
-  );
+
+    const { error } = await state.supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: `${location.origin}${location.pathname}`
+      }
+    );
+
+    if (error) {
+      setFormError($("#login-error"), error.message);
+    } else {
+      toast(
+        "Link enviado",
+        "Confira a caixa de entrada e a pasta de spam.",
+        "success"
+      );
+    }
+  });
 
   $$(".theme-toggle").forEach((button) =>
-    button.addEventListener(
-      "click",
-      toggleTheme
-    )
+    button.addEventListener("click", toggleTheme)
   );
 
   $("#logout-button").addEventListener(
@@ -261,64 +209,46 @@ function bindStaticEvents(state) {
     () => state.supabase.auth.signOut()
   );
 
-  $("#refresh-button").addEventListener(
-    "click",
-    async () => {
-      setLoading(true);
+  $("#refresh-button").addEventListener("click", async () => {
+    setLoading(true);
+    await loadAllData(state);
+    setLoading(false);
 
-      await loadAllData(state);
-
-      setLoading(false);
-
-      toast(
-        "Dados atualizados",
-        "As informações mais recentes foram carregadas.",
-        "success"
-      );
-    }
-  );
+    toast(
+      "Dados atualizados",
+      "As informações mais recentes foram carregadas.",
+      "success"
+    );
+  });
 
   $$(".nav-item").forEach((item) =>
-    item.addEventListener("click", () =>
-      navigateTo(
-        state,
-        item.dataset.view
-      )
+    item.addEventListener(
+      "click",
+      () => navigateTo(state, item.dataset.view)
     )
   );
 
   $("#open-sidebar").addEventListener(
     "click",
-    () =>
-      $("#sidebar").classList.add("open")
+    () => $("#sidebar").classList.add("open")
   );
 
-  $("#close-sidebar").addEventListener(
-    "click",
-    closeSidebar
-  );
-
-  $("#sidebar-overlay").addEventListener(
-    "click",
-    closeSidebar
-  );
+  $("#close-sidebar").addEventListener("click", closeSidebar);
+  $("#sidebar-overlay").addEventListener("click", closeSidebar);
 
   $("#new-person-button").addEventListener(
     "click",
     () => openDialog("person-dialog")
   );
 
-  $("#new-class-button").addEventListener(
-    "click",
-    () => {
-      $("#class-form").reset();
+  $("#new-class-button").addEventListener("click", () => {
+    $("#class-form").reset();
 
-      $("#class-form [name='school_year']").value =
-        new Date().getFullYear();
+    $("#class-form [name='school_year']").value =
+      new Date().getFullYear();
 
-      openDialog("class-dialog");
-    }
-  );
+    openDialog("class-dialog");
+  });
 
   $("#new-grade-button").addEventListener(
     "click",
@@ -343,58 +273,44 @@ function bindStaticEvents(state) {
   $$(".modal-close").forEach((button) =>
     button.addEventListener(
       "click",
-      () =>
-        button
-          .closest("dialog")
-          .close()
+      () => button.closest("dialog").close()
     )
   );
 
   $$("dialog.modal").forEach((dialog) =>
-    dialog.addEventListener(
-      "click",
-      (event) => {
-        if (event.target === dialog) {
-          dialog.close();
-        }
-      }
-    )
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    })
   );
 
-  $("#person-form [name='role']")
-    .addEventListener(
-      "change",
-      updatePersonFields
-    );
+  $("#person-form [name='role']").addEventListener(
+    "change",
+    updatePersonFields
+  );
 
   $("#person-form").addEventListener(
     "submit",
-    (event) =>
-      submitPerson(event, state)
+    (event) => submitPerson(event, state)
   );
 
   $("#class-form").addEventListener(
     "submit",
-    (event) =>
-      submitClass(event, state)
+    (event) => submitClass(event, state)
   );
 
   $("#grade-form").addEventListener(
     "submit",
-    (event) =>
-      submitGrade(event, state)
+    (event) => submitGrade(event, state)
   );
 
   $("#attendance-form").addEventListener(
     "submit",
-    (event) =>
-      submitAttendance(event, state)
+    (event) => submitAttendance(event, state)
   );
 
   $("#assignment-form").addEventListener(
     "submit",
-    (event) =>
-      submitAssignment(event, state)
+    (event) => submitAssignment(event, state)
   );
 
   $("#people-search").addEventListener(
@@ -437,383 +353,363 @@ function bindStaticEvents(state) {
     () => renderAttendance(state)
   );
 
-  $("#grade-student-select").addEventListener(
-    "change",
-    () =>
-      updateSubjectSelectForStudent(
-        state,
-        "#grade-student-select",
-        "#grade-subject-select"
-      )
+  $("#grade-student-select").addEventListener("change", () =>
+    updateSubjectSelectForStudent(
+      state,
+      "#grade-student-select",
+      "#grade-subject-select"
+    )
   );
 
-  $("#attendance-student-select").addEventListener(
-    "change",
-    () =>
-      updateSubjectSelectForStudent(
-        state,
-        "#attendance-student-select",
-        "#attendance-subject-select"
-      )
+  $("#attendance-student-select").addEventListener("change", () =>
+    updateSubjectSelectForStudent(
+      state,
+      "#attendance-student-select",
+      "#attendance-subject-select"
+    )
   );
 
-  $("#assignment-class-select").addEventListener(
-    "change",
-    () =>
-      updateSubjectSelectForClass(
-        state,
-        "#assignment-class-select",
-        "#assignment-subject-select"
-      )
+  $("#assignment-class-select").addEventListener("change", () =>
+    updateSubjectSelectForClass(
+      state,
+      "#assignment-class-select",
+      "#assignment-subject-select"
+    )
   );
 
   $("#confirm-cancel").addEventListener(
     "click",
-    () =>
-      $("#confirm-dialog").close()
+    () => $("#confirm-dialog").close()
   );
 
-  $("#confirm-action").addEventListener(
-    "click",
-    async () => {
-      const callback =
-        state.confirmCallback;
+  $("#confirm-action").addEventListener("click", async () => {
+    const callback = state.confirmCallback;
 
-      $("#confirm-dialog").close();
+    $("#confirm-dialog").close();
+    state.confirmCallback = null;
 
-      state.confirmCallback = null;
+    if (callback) await callback();
+  });
 
-      if (callback) {
-        await callback();
-      }
+  document.addEventListener("click", async (event) => {
+    const navigateButton = event.target.closest("[data-navigate]");
+
+    if (navigateButton) {
+      navigateTo(state, navigateButton.dataset.navigate);
     }
-  );
 
-  document.addEventListener(
-    "click",
-    async (event) => {
-      const navigateButton =
-        event.target.closest(
-          "[data-navigate]"
-        );
+    const deletePersonButton =
+      event.target.closest("[data-delete-person]");
 
-      if (navigateButton) {
-        navigateTo(
-          state,
-          navigateButton.dataset.navigate
-        );
-      }
+    if (deletePersonButton) {
+      const person = state.people.find(
+        (item) =>
+          item.id === deletePersonButton.dataset.deletePerson
+      );
 
-      const deletePersonButton =
-        event.target.closest(
-          "[data-delete-person]"
-        );
-
-      if (deletePersonButton) {
-        const person =
-          state.people.find(
-            (item) =>
-              item.id ===
-              deletePersonButton.dataset
-                .deletePerson
-          );
-
-        confirmAction(
-          state,
-          `Excluir ${person?.full_name ?? "esta pessoa"}?`,
-          "A conta de acesso e todos os registros vinculados serão removidos.",
-          () =>
-            deletePerson(
-              state,
-              deletePersonButton.dataset
-                .deletePerson
-            )
-        );
-      }
-
-      const editGradeButton =
-        event.target.closest(
-          "[data-edit-grade]"
-        );
-
-      if (editGradeButton) {
-        openGradeDialog(
-          state,
-          state.grades.find(
-            (item) =>
-              item.id ===
-              editGradeButton.dataset
-                .editGrade
+      confirmAction(
+        state,
+        `Excluir ${person?.full_name ?? "esta pessoa"}?`,
+        "A conta de acesso e todos os registros vinculados serão removidos.",
+        () =>
+          deletePerson(
+            state,
+            deletePersonButton.dataset.deletePerson
           )
-        );
-      }
-
-      const deleteGradeButton =
-        event.target.closest(
-          "[data-delete-grade]"
-        );
-
-      if (deleteGradeButton) {
-        confirmAction(
-          state,
-          "Excluir esta nota?",
-          "O lançamento será removido do boletim do aluno.",
-          () =>
-            deleteGrade(
-              state,
-              deleteGradeButton.dataset
-                .deleteGrade
-            )
-        );
-      }
-
-      const editAttendanceButton =
-        event.target.closest(
-          "[data-edit-attendance]"
-        );
-
-      if (editAttendanceButton) {
-        openAttendanceDialog(
-          state,
-          state.attendance.find(
-            (item) =>
-              item.id ===
-              editAttendanceButton.dataset
-                .editAttendance
-          )
-        );
-      }
-
-      const deleteAttendanceButton =
-        event.target.closest(
-          "[data-delete-attendance]"
-        );
-
-      if (deleteAttendanceButton) {
-        confirmAction(
-          state,
-          "Excluir este registro?",
-          "A frequência do aluno será recalculada.",
-          () =>
-            deleteAttendance(
-              state,
-              deleteAttendanceButton.dataset
-                .deleteAttendance
-            )
-        );
-      }
-
-      const deleteAssignmentButton =
-        event.target.closest(
-          "[data-delete-assignment]"
-        );
-
-      if (deleteAssignmentButton) {
-        confirmAction(
-          state,
-          "Remover este vínculo?",
-          "O professor deixará de acessar essa turma e disciplina.",
-          () =>
-            deleteAssignment(
-              state,
-              deleteAssignmentButton.dataset
-                .deleteAssignment
-            )
-        );
-      }
+      );
     }
-  );
+
+    const editGradeButton =
+      event.target.closest("[data-edit-grade]");
+
+    if (editGradeButton) {
+      openGradeDialog(
+        state,
+        state.grades.find(
+          (item) =>
+            item.id === editGradeButton.dataset.editGrade
+        )
+      );
+    }
+
+    const deleteGradeButton =
+      event.target.closest("[data-delete-grade]");
+
+    if (deleteGradeButton) {
+      confirmAction(
+        state,
+        "Excluir esta nota?",
+        "O lançamento será removido do boletim do aluno.",
+        () =>
+          deleteGrade(
+            state,
+            deleteGradeButton.dataset.deleteGrade
+          )
+      );
+    }
+
+    const editAttendanceButton =
+      event.target.closest("[data-edit-attendance]");
+
+    if (editAttendanceButton) {
+      openAttendanceDialog(
+        state,
+        state.attendance.find(
+          (item) =>
+            item.id === editAttendanceButton.dataset.editAttendance
+        )
+      );
+    }
+
+    const deleteAttendanceButton =
+      event.target.closest("[data-delete-attendance]");
+
+    if (deleteAttendanceButton) {
+      confirmAction(
+        state,
+        "Excluir este registro?",
+        "A frequência do aluno será recalculada.",
+        () =>
+          deleteAttendance(
+            state,
+            deleteAttendanceButton.dataset.deleteAttendance
+          )
+      );
+    }
+
+    const deleteAssignmentButton =
+      event.target.closest("[data-delete-assignment]");
+
+    if (deleteAssignmentButton) {
+      confirmAction(
+        state,
+        "Remover este vínculo?",
+        "O professor deixará de acessar essa turma e disciplina.",
+        () =>
+          deleteAssignment(
+            state,
+            deleteAssignmentButton.dataset.deleteAssignment
+          )
+      );
+    }
+  });
 }
 
 async function loadAllData(state) {
   const { supabase, profile } = state;
 
-  const commonRequests = [
+  const [
+    cursosR,
+    turmasR,
+    disciplinasR,
+    perfisR,
+    alunosR,
+    professoresR,
+    funcionariosR,
+    notasR,
+    frequenciaR,
+    atribuicoesR
+  ] = await Promise.all([
     supabase
       .from("cursos")
-      .select(
-        "id, code:codigo, name:nome"
-      )
+      .select("id,codigo,nome")
       .order("nome"),
 
     supabase
       .from("turmas")
-      .select(
-        "id, name:nome, module:modulo, shift:turno, school_year:ano_letivo, room:sala, course_id:curso_id, courses:cursos(code:codigo, name:nome)"
-      )
+      .select("id,curso_id,nome,modulo,turno,ano_letivo,sala")
       .order("nome"),
 
     supabase
       .from("disciplinas")
-      .select(
-        "id, name:nome, code:codigo, course_id:curso_id"
-      )
-      .order("nome")
-  ];
+      .select("id,curso_id,codigo,nome,carga_horaria")
+      .order("nome"),
 
-  const [
-    coursesResult,
-    classesResult,
-    subjectsResult
-  ] =
-    await Promise.all(
-      commonRequests
-    );
+    supabase
+      .from("perfis")
+      .select("id,nome_completo,email,tipo_usuario,situacao")
+      .order("nome_completo"),
 
-  state.courses =
-    coursesResult.data ?? [];
+    supabase
+      .from("alunos")
+      .select("id,perfil_id,matricula,turma_id,nome_responsavel,data_nascimento")
+      .order("matricula"),
 
-  state.classes =
-    classesResult.data ?? [];
+    supabase
+      .from("professores")
+      .select("id,perfil_id,matricula,especialidade")
+      .order("matricula"),
 
-  state.subjects =
-    subjectsResult.data ?? [];
+    supabase
+      .from("funcionarios")
+      .select("id,perfil_id,matricula,cargo,departamento")
+      .order("matricula"),
 
-  if (profile.role === "funcionario") {
-    const [
-      peopleResult,
-      studentsResult,
-      gradesResult,
-      attendanceResult,
-      assignmentsResult
-    ] =
-      await Promise.all([
-        supabase
-          .from("perfis")
-          .select(
-            "id, full_name:nome_completo, email, role:tipo_usuario, status:situacao, students:alunos(id, registration:matricula, class_id:turma_id, classes:turmas(name:nome)), teachers:professores(id, registration:matricula, specialty:especialidade), employees:funcionarios(id, registration:matricula, job_title:cargo, department:departamento)"
-          )
-          .order("nome_completo"),
+    gradesQuery(supabase),
 
-        supabase
-          .from("alunos")
-          .select(
-            "id, profile_id:perfil_id, class_id:turma_id, registration:matricula, profiles:perfis(full_name:nome_completo, email), classes:turmas(name:nome, shift:turno, courses:cursos(code:codigo))"
-          )
-          .order("matricula"),
+    attendanceQuery(supabase),
 
-        gradesQuery(supabase),
+    supabase
+      .from("atribuicoes_professores")
+      .select("id,professor_id,turma_id,disciplina_id,criado_em")
+      .order("criado_em", { ascending: false })
+  ]);
 
-        attendanceQuery(supabase),
+  const results = {
+    cursos: cursosR,
+    turmas: turmasR,
+    disciplinas: disciplinasR,
+    perfis: perfisR,
+    alunos: alunosR,
+    professores: professoresR,
+    funcionarios: funcionariosR,
+    notas: notasR,
+    frequencia: frequenciaR,
+    atribuicoes: atribuicoesR
+  };
 
-        supabase
-          .from(
-            "atribuicoes_professores"
-          )
-          .select(
-            "id, teacher_id:professor_id, class_id:turma_id, subject_id:disciplina_id, profiles:perfis!teacher_assignments_teacher_id_fkey(full_name:nome_completo), classes:turmas(name:nome), subjects:disciplinas(name:nome)"
-          )
-          .order(
-            "criado_em",
-            {
-              ascending: false
-            }
-          )
-      ]);
-
-    state.people =
-      peopleResult.data ?? [];
-
-    state.students =
-      studentsResult.data ?? [];
-
-    state.grades =
-      gradesResult.data ?? [];
-
-    state.attendance =
-      attendanceResult.data ?? [];
-
-    state.teacherAssignments =
-      assignmentsResult.data ?? [];
-  } else if (
-    profile.role === "professor"
-  ) {
-    const [
-      studentsResult,
-      gradesResult,
-      attendanceResult,
-      assignmentsResult
-    ] =
-      await Promise.all([
-        supabase
-          .from("alunos")
-          .select(
-            "id, profile_id:perfil_id, class_id:turma_id, registration:matricula, profiles:perfis(full_name:nome_completo, email), classes:turmas(name:nome, shift:turno, courses:cursos(code:codigo))"
-          )
-          .order("matricula"),
-
-        gradesQuery(supabase),
-
-        attendanceQuery(supabase),
-
-        supabase
-          .from(
-            "atribuicoes_professores"
-          )
-          .select(
-            "id, teacher_id:professor_id, class_id:turma_id, subject_id:disciplina_id"
-          )
-          .eq(
-            "professor_id",
-            profile.id
-          )
-      ]);
-
-    state.students =
-      studentsResult.data ?? [];
-
-    state.grades =
-      gradesResult.data ?? [];
-
-    state.attendance =
-      attendanceResult.data ?? [];
-
-    state.teacherAssignments =
-      assignmentsResult.data ?? [];
-  } else {
-    const { data: student } =
-      await supabase
-        .from("alunos")
-        .select(
-          "id, profile_id:perfil_id, class_id:turma_id, registration:matricula, profiles:perfis(full_name:nome_completo, email), classes:turmas(name:nome, shift:turno, module:modulo, courses:cursos(code:codigo, name:nome))"
-        )
-        .eq(
-          "perfil_id",
-          profile.id
-        )
-        .maybeSingle();
-
-    state.students =
-      student ? [student] : [];
-
-    if (student) {
-      const [
-        gradesResult,
-        attendanceResult
-      ] =
-        await Promise.all([
-          gradesQuery(
-            supabase
-          ).eq(
-            "aluno_id",
-            student.id
-          ),
-
-          attendanceQuery(
-            supabase
-          ).eq(
-            "aluno_id",
-            student.id
-          )
-        ]);
-
-      state.grades =
-        gradesResult.data ?? [];
-
-      state.attendance =
-        attendanceResult.data ?? [];
+  Object.entries(results).forEach(([name, result]) => {
+    if (result.error) {
+      console.error(`Erro ao carregar ${name}:`, result.error);
     }
+  });
+
+  state.courses = (cursosR.data ?? []).map((x) => ({
+    id: x.id,
+    code: x.codigo,
+    name: x.nome
+  }));
+
+  const courseMap =
+    new Map(state.courses.map((x) => [x.id, x]));
+
+  state.classes = (turmasR.data ?? []).map((x) => ({
+    id: x.id,
+    course_id: x.curso_id,
+    name: x.nome,
+    module: x.modulo,
+    shift: x.turno,
+    school_year: x.ano_letivo,
+    room: x.sala,
+    courses: courseMap.get(x.curso_id) ?? null
+  }));
+
+  const classMap =
+    new Map(state.classes.map((x) => [x.id, x]));
+
+  state.subjects = (disciplinasR.data ?? []).map((x) => ({
+    id: x.id,
+    course_id: x.curso_id,
+    code: x.codigo,
+    name: x.nome,
+    workload: x.carga_horaria
+  }));
+
+  const subjectMap =
+    new Map(state.subjects.map((x) => [x.id, x]));
+
+  const peopleBase = (perfisR.data ?? []).map((x) => ({
+    id: x.id,
+    full_name: x.nome_completo,
+    email: x.email,
+    role: x.tipo_usuario,
+    status: x.situacao
+  }));
+
+  const profileMap =
+    new Map(peopleBase.map((x) => [x.id, x]));
+
+  if (
+    profile?.id &&
+    !profileMap.has(profile.id)
+  ) {
+    profileMap.set(profile.id, profile);
   }
+
+  state.students = (alunosR.data ?? []).map((x) => ({
+    id: x.id,
+    profile_id: x.perfil_id,
+    registration: x.matricula,
+    class_id: x.turma_id,
+    guardian_name: x.nome_responsavel,
+    birth_date: x.data_nascimento,
+    profiles: profileMap.get(x.perfil_id) ?? null,
+    classes: classMap.get(x.turma_id) ?? null
+  }));
+
+  const studentMap =
+    new Map(state.students.map((x) => [x.id, x]));
+
+  const teachers = (professoresR.data ?? []).map((x) => ({
+    id: x.id,
+    profile_id: x.perfil_id,
+    registration: x.matricula,
+    specialty: x.especialidade
+  }));
+
+  const employees = (funcionariosR.data ?? []).map((x) => ({
+    id: x.id,
+    profile_id: x.perfil_id,
+    registration: x.matricula,
+    job_title: x.cargo,
+    department: x.departamento
+  }));
+
+  state.people =
+    profile.role === "funcionario"
+      ? peopleBase.map((p) => ({
+          ...p,
+          students:
+            state.students.filter(
+              (x) => x.profile_id === p.id
+            ),
+          teachers:
+            teachers.filter(
+              (x) => x.profile_id === p.id
+            ),
+          employees:
+            employees.filter(
+              (x) => x.profile_id === p.id
+            )
+        }))
+      : [];
+
+  state.grades = (notasR.data ?? []).map((x) => ({
+    id: x.id,
+    student_id: x.aluno_id,
+    subject_id: x.disciplina_id,
+    teacher_id: x.professor_id,
+    term: x.bimestre,
+    assessment: x.avaliacao,
+    score: x.nota,
+    weight: x.peso,
+    created_at: x.criado_em,
+    students: studentMap.get(x.aluno_id) ?? null,
+    subjects: subjectMap.get(x.disciplina_id) ?? null
+  }));
+
+  state.attendance = (frequenciaR.data ?? []).map((x) => ({
+    id: x.id,
+    student_id: x.aluno_id,
+    subject_id: x.disciplina_id,
+    teacher_id: x.professor_id,
+    attendance_date: x.data_aula,
+    status: x.situacao,
+    notes: x.observacoes,
+    students: studentMap.get(x.aluno_id) ?? null,
+    subjects: subjectMap.get(x.disciplina_id) ?? null
+  }));
+
+  state.teacherAssignments =
+    (atribuicoesR.data ?? []).map((x) => ({
+      id: x.id,
+      teacher_id: x.professor_id,
+      class_id: x.turma_id,
+      subject_id: x.disciplina_id,
+      profiles: profileMap.get(x.professor_id) ?? null,
+      classes: classMap.get(x.turma_id) ?? null,
+      subjects: subjectMap.get(x.disciplina_id) ?? null
+    }));
 
   populateSelects(state);
   renderCurrentData(state);
@@ -823,45 +719,29 @@ function gradesQuery(supabase) {
   return supabase
     .from("notas")
     .select(
-      "id, student_id:aluno_id, subject_id:disciplina_id, teacher_id:professor_id, term:bimestre, assessment:avaliacao, score:nota, weight:peso, created_at:criado_em, students:alunos(class_id:turma_id, profiles:perfis(full_name:nome_completo), classes:turmas(name:nome)), subjects:disciplinas(name:nome, code:codigo)"
+      "id,aluno_id,disciplina_id,professor_id,bimestre,avaliacao,nota,peso,criado_em"
     )
-    .order(
-      "criado_em",
-      {
-        ascending: false
-      }
-    );
+    .order("criado_em", { ascending: false });
 }
 
 function attendanceQuery(supabase) {
   return supabase
     .from("frequencia")
     .select(
-      "id, student_id:aluno_id, subject_id:disciplina_id, teacher_id:professor_id, attendance_date:data_aula, status:situacao, notes:observacoes, students:alunos(class_id:turma_id, profiles:perfis(full_name:nome_completo), classes:turmas(name:nome)), subjects:disciplinas(name:nome, code:codigo)"
+      "id,aluno_id,disciplina_id,professor_id,data_aula,situacao,observacoes,criado_em"
     )
-    .order(
-      "data_aula",
-      {
-        ascending: false
-      }
-    );
+    .order("data_aula", { ascending: false });
 }
 
 function renderCurrentData(state) {
   renderDashboard(state);
 
-  if (
-    state.profile.role ===
-    "funcionario"
-  ) {
+  if (state.profile.role === "funcionario") {
     renderPeople(state);
     renderAssignments(state);
   }
 
-  if (
-    state.profile.role !==
-    "aluno"
-  ) {
+  if (state.profile.role !== "aluno") {
     renderClasses(state);
     renderGrades(state);
     renderAttendance(state);
@@ -874,13 +754,8 @@ function renderCurrentData(state) {
 }
 
 function renderDashboard(state) {
-  const {
-    role,
-    full_name
-  } = state.profile;
-
-  const firstName =
-    full_name.split(" ")[0];
+  const { role, full_name } = state.profile;
+  const firstName = full_name.split(" ")[0];
 
   $("#welcome-title").textContent =
     `Olá, ${firstName}!`;
@@ -908,18 +783,12 @@ function renderDashboard(state) {
       : managementMetrics(state);
 
   $("#metric-grid").innerHTML =
-    metrics
-      .map(metricCard)
-      .join("");
+    metrics.map(metricCard).join("");
 
   if (role === "aluno") {
-    renderStudentPerformance(
-      state
-    );
+    renderStudentPerformance(state);
   } else {
-    renderManagementPerformance(
-      state
-    );
+    renderManagementPerformance(state);
   }
 
   const actions =
@@ -983,22 +852,8 @@ function renderDashboard(state) {
   $("#quick-actions").innerHTML =
     actions
       .map(
-        ([
-          icon,
-          title,
-          detail,
-          view
-        ]) =>
-          `<button class="quick-action" type="button" data-navigate="${view}">
-            <span>
-              <i data-lucide="${icon}"></i>
-            </span>
-
-            <span>
-              <strong>${title}</strong>
-              <small>${detail}</small>
-            </span>
-          </button>`
+        ([icon, title, detail, view]) =>
+          `<button class="quick-action" type="button" data-navigate="${view}"><span><i data-lucide="${icon}"></i></span><span><strong>${title}</strong><small>${detail}</small></span></button>`
       )
       .join("");
 }
@@ -1006,15 +861,13 @@ function renderDashboard(state) {
 function studentMetrics(state) {
   const scores =
     state.grades.map(
-      (grade) =>
-        Number(grade.score)
+      (grade) => Number(grade.score)
     );
 
   const average =
     scores.length
       ? scores.reduce(
-          (sum, value) =>
-            sum + value,
+          (sum, value) => sum + value,
           0
         ) / scores.length
       : 0;
@@ -1024,80 +877,60 @@ function studentMetrics(state) {
 
   const present =
     state.attendance.filter(
-      (item) =>
-        item.status ===
-        "presente"
+      (item) => item.status === "presente"
     ).length;
 
   const frequency =
     total
-      ? (present / total) *
-        100
+      ? (present / total) * 100
       : 0;
 
   const absences =
     state.attendance.filter(
-      (item) =>
-        item.status ===
-        "falta"
+      (item) => item.status === "falta"
     ).length;
 
   const className =
-    state.students[0]
-      ?.classes?.name ??
+    state.students[0]?.classes?.name ??
     "Sem turma";
 
   return [
     {
-      label:
-        "Média geral",
+      label: "Média geral",
       value:
         scores.length
           ? average.toFixed(1)
           : "—",
-      icon:
-        "chart-no-axes-combined",
+      icon: "chart-no-axes-combined",
       tone: ""
     },
     {
-      label:
-        "Frequência",
+      label: "Frequência",
       value:
         total
           ? `${frequency.toFixed(0)}%`
           : "—",
-      icon:
-        "calendar-check",
-      tone:
-        "success"
+      icon: "calendar-check",
+      tone: "success"
     },
     {
-      label:
-        "Faltas",
-      value:
-        absences,
-      icon:
-        "calendar-x",
-      tone:
-        "warning"
+      label: "Faltas",
+      value: absences,
+      icon: "calendar-x",
+      tone: "warning"
     },
     {
-      label:
-        "Turma",
-      value:
-        className,
-      icon:
-        "school",
-      tone:
-        "purple"
+      label: "Turma",
+      value: className,
+      icon: "school",
+      tone: "purple"
     }
   ];
 }
 
 function managementMetrics(state) {
   const peopleCount =
-    state.profile.role ===
-    "funcionario"
+    state.profile.role === "funcionario"
       ? state.people.length
       : state.students.length;
 
@@ -1107,52 +940,36 @@ function managementMetrics(state) {
   const todayAttendance =
     state.attendance.filter(
       (item) =>
-        item.attendance_date ===
-        today
+        item.attendance_date === today
     ).length;
 
   return [
     {
       label:
-        state.profile.role ===
-        "funcionario"
+        state.profile.role === "funcionario"
           ? "Pessoas cadastradas"
           : "Alunos disponíveis",
-      value:
-        peopleCount,
-      icon:
-        "users",
+      value: peopleCount,
+      icon: "users",
       tone: ""
     },
     {
-      label:
-        "Turmas",
-      value:
-        state.classes.length,
-      icon:
-        "school",
-      tone:
-        "purple"
+      label: "Turmas",
+      value: state.classes.length,
+      icon: "school",
+      tone: "purple"
     },
     {
-      label:
-        "Notas lançadas",
-      value:
-        state.grades.length,
-      icon:
-        "notebook-pen",
-      tone:
-        "success"
+      label: "Notas lançadas",
+      value: state.grades.length,
+      icon: "notebook-pen",
+      tone: "success"
     },
     {
-      label:
-        "Chamadas hoje",
-      value:
-        todayAttendance,
-      icon:
-        "calendar-days",
-      tone:
-        "warning"
+      label: "Chamadas hoje",
+      value: todayAttendance,
+      icon: "calendar-days",
+      tone: "warning"
     }
   ];
 }
@@ -1170,10 +987,7 @@ function metricCard({
       </span>
 
       <span class="metric-copy">
-        <span>
-          ${escapeHTML(label)}
-        </span>
-
+        <span>${escapeHTML(label)}</span>
         <strong title="${escapeHTML(String(value))}">
           ${escapeHTML(String(value))}
         </strong>
@@ -1193,35 +1007,19 @@ function renderStudentPerformance(state) {
 
   const rows =
     Object.entries(grouped)
-      .map(
-        ([
-          name,
-          grades
-        ]) => {
-          const average =
-            grades.reduce(
-              (
-                sum,
-                grade
-              ) =>
-                sum +
-                Number(
-                  grade.score
-                ),
-              0
-            ) /
-            grades.length;
+      .map(([name, grades]) => {
+        const average =
+          grades.reduce(
+            (sum, grade) =>
+              sum + Number(grade.score),
+            0
+          ) / grades.length;
 
-          return {
-            name,
-            average
-          };
-        }
-      )
+        return { name, average };
+      })
       .sort(
         (a, b) =>
-          b.average -
-          a.average
+          b.average - a.average
       )
       .slice(0, 5);
 
@@ -1229,28 +1027,19 @@ function renderStudentPerformance(state) {
     rows.length
       ? `
         <div class="performance-bars">
-          ${rows
-            .map(
-              ({
-                name,
-                average
-              }) => `
-                <div class="performance-row">
-                  <span title="${escapeHTML(name)}">
-                    ${escapeHTML(name)}
-                  </span>
+          ${rows.map(({ name, average }) => `
+            <div class="performance-row">
+              <span title="${escapeHTML(name)}">
+                ${escapeHTML(name)}
+              </span>
 
-                  <div class="progress-track">
-                    <i style="width:${Math.min(100, average * 10)}%"></i>
-                  </div>
+              <div class="progress-track">
+                <i style="width:${Math.min(100, average * 10)}%"></i>
+              </div>
 
-                  <strong>
-                    ${average.toFixed(1)}
-                  </strong>
-                </div>
-              `
-            )
-            .join("")}
+              <strong>${average.toFixed(1)}</strong>
+            </div>
+          `).join("")}
         </div>
       `
       : `
@@ -1271,8 +1060,7 @@ function renderManagementPerformance(state) {
           "Outro";
 
         acc[code] =
-          (acc[code] ?? 0) +
-          1;
+          (acc[code] ?? 0) + 1;
 
         return acc;
       },
@@ -1281,46 +1069,34 @@ function renderManagementPerformance(state) {
 
   const max =
     Math.max(
-      ...Object.values(
-        courseCounts
-      ),
+      ...Object.values(courseCounts),
       1
     );
 
   const rows =
-    Object.entries(
-      courseCounts
-    ).sort(
-      (a, b) =>
-        b[1] - a[1]
-    );
+    Object.entries(courseCounts)
+      .sort(
+        (a, b) =>
+          b[1] - a[1]
+      );
 
   $("#performance-content").innerHTML =
     rows.length
       ? `
         <div class="performance-bars">
-          ${rows
-            .map(
-              ([
-                name,
-                amount
-              ]) => `
-                <div class="performance-row">
-                  <span>
-                    ${escapeHTML(name)}
-                  </span>
+          ${rows.map(([name, amount]) => `
+            <div class="performance-row">
+              <span>
+                ${escapeHTML(name)}
+              </span>
 
-                  <div class="progress-track">
-                    <i style="width:${(amount / max) * 100}%"></i>
-                  </div>
+              <div class="progress-track">
+                <i style="width:${(amount / max) * 100}%"></i>
+              </div>
 
-                  <strong>
-                    ${amount}
-                  </strong>
-                </div>
-              `
-            )
-            .join("")}
+              <strong>${amount}</strong>
+            </div>
+          `).join("")}
         </div>
       `
       : `
@@ -1342,29 +1118,23 @@ function renderPeople(state) {
     $("#people-role-filter").value;
 
   const filtered =
-    state.people.filter(
-      (person) => {
-        const specialized =
-          getSpecializedProfile(
-            person
-          );
+    state.people.filter((person) => {
+      const specialized =
+        getSpecializedProfile(person);
 
-        const haystack =
-          normalize(
-            `${person.full_name} ${person.email} ${specialized?.registration ?? ""}`
-          );
-
-        return (
-          (
-            role === "todos" ||
-            person.role === role
-          ) &&
-          haystack.includes(
-            query
-          )
+      const haystack =
+        normalize(
+          `${person.full_name} ${person.email} ${specialized?.registration ?? ""}`
         );
-      }
-    );
+
+      return (
+        (
+          role === "todos" ||
+          person.role === role
+        ) &&
+        haystack.includes(query)
+      );
+    });
 
   const body =
     $("#people-table-body");
@@ -1373,23 +1143,15 @@ function renderPeople(state) {
     filtered
       .map((person) => {
         const specialized =
-          getSpecializedProfile(
-            person
-          );
+          getSpecializedProfile(person);
 
         const place =
-          person.role ===
-          "aluno"
-            ? specialized
-                ?.classes
-                ?.name
-            : person.role ===
-                "professor"
-              ? specialized
-                  ?.specialty
+          person.role === "aluno"
+            ? specialized?.classes?.name
+            : person.role === "professor"
+              ? specialized?.specialty
               : `${specialized?.job_title ?? "—"}${
-                  specialized
-                    ?.department
+                  specialized?.department
                     ? ` · ${specialized.department}`
                     : ""
                 }`;
@@ -1435,8 +1197,7 @@ function renderPeople(state) {
                   : "status-neutral"
               }">
                 ${
-                  person.status ===
-                  "ativo"
+                  person.status === "ativo"
                     ? "Ativo"
                     : "Inativo"
                 }
@@ -1496,8 +1257,7 @@ function renderClasses(state) {
         const count =
           state.students.filter(
             (student) =>
-              student.class_id ===
-              item.id
+              student.class_id === item.id
           ).length;
 
         return `
@@ -1548,11 +1308,10 @@ function renderClasses(state) {
       })
       .join("");
 
-  $("#class-empty")
-    .classList.toggle(
-      "hidden",
-      filtered.length !== 0
-    );
+  $("#class-empty").classList.toggle(
+    "hidden",
+    filtered.length !== 0
+  );
 
   refreshIcons();
 }
@@ -1563,51 +1322,47 @@ function renderAssignments(state) {
 
   body.innerHTML =
     state.teacherAssignments
-      .map(
-        (item) => `
-          <tr>
-            <td>
-              ${escapeHTML(item.profiles?.full_name ?? "Professor")}
-            </td>
+      .map((item) => `
+        <tr>
+          <td>
+            ${escapeHTML(item.profiles?.full_name ?? "Professor")}
+          </td>
 
-            <td>
-              ${escapeHTML(item.classes?.name ?? "—")}
-            </td>
+          <td>
+            ${escapeHTML(item.classes?.name ?? "—")}
+          </td>
 
-            <td>
-              ${escapeHTML(item.subjects?.name ?? "—")}
-            </td>
+          <td>
+            ${escapeHTML(item.subjects?.name ?? "—")}
+          </td>
 
-            <td>
-              <div class="table-actions">
-                <button
-                  class="table-action danger"
-                  type="button"
-                  data-delete-assignment="${item.id}"
-                  aria-label="Remover vínculo"
-                >
-                  <i data-lucide="unlink"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `
-      )
+          <td>
+            <div class="table-actions">
+              <button
+                class="table-action danger"
+                type="button"
+                data-delete-assignment="${item.id}"
+                aria-label="Remover vínculo"
+              >
+                <i data-lucide="unlink"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `)
       .join("");
 
   body
     .closest(".table-scroll")
     .classList.toggle(
       "hidden",
-      state.teacherAssignments
-        .length === 0
+      state.teacherAssignments.length === 0
     );
 
   $("#assignments-empty")
     .classList.toggle(
       "hidden",
-      state.teacherAssignments
-        .length !== 0
+      state.teacherAssignments.length !== 0
     );
 
   refreshIcons();
@@ -1625,15 +1380,11 @@ function renderGrades(state) {
       (grade) =>
         (
           classId === "todos" ||
-          grade.students
-            ?.class_id ===
-            classId
+          grade.students?.class_id === classId
         ) &&
         (
           term === "todos" ||
-          String(
-            grade.term
-          ) === term
+          String(grade.term) === term
         )
     );
 
@@ -1642,69 +1393,70 @@ function renderGrades(state) {
 
   body.innerHTML =
     filtered
-      .map(
-        (grade) => `
-          <tr>
-            <td>
-              ${escapeHTML(grade.students?.profiles?.full_name ?? "Aluno")}
-            </td>
+      .map((grade) => `
+        <tr>
+          <td>
+            ${escapeHTML(
+              grade.students?.profiles?.full_name ??
+              "Aluno"
+            )}
+          </td>
 
-            <td>
-              ${escapeHTML(grade.subjects?.name ?? "—")}
-            </td>
+          <td>
+            ${escapeHTML(grade.subjects?.name ?? "—")}
+          </td>
 
-            <td>
-              ${escapeHTML(grade.assessment)}
-            </td>
+          <td>
+            ${escapeHTML(grade.assessment)}
+          </td>
 
-            <td>
-              ${grade.term}º
-            </td>
+          <td>
+            ${grade.term}º
+          </td>
 
-            <td>
-              <span class="score">
-                ${Number(grade.score).toFixed(1)}
-              </span>
-            </td>
+          <td>
+            <span class="score">
+              ${Number(grade.score).toFixed(1)}
+            </span>
+          </td>
 
-            <td>
-              <span class="status-badge ${
+          <td>
+            <span class="status-badge ${
+              Number(grade.score) >= 6
+                ? "status-success"
+                : "status-warning"
+            }">
+              ${
                 Number(grade.score) >= 6
-                  ? "status-success"
-                  : "status-warning"
-              }">
-                ${
-                  Number(grade.score) >= 6
-                    ? "Na média"
-                    : "Atenção"
-                }
-              </span>
-            </td>
+                  ? "Na média"
+                  : "Atenção"
+              }
+            </span>
+          </td>
 
-            <td>
-              <div class="table-actions">
-                <button
-                  class="table-action"
-                  type="button"
-                  data-edit-grade="${grade.id}"
-                  aria-label="Editar nota"
-                >
-                  <i data-lucide="pencil"></i>
-                </button>
+          <td>
+            <div class="table-actions">
+              <button
+                class="table-action"
+                type="button"
+                data-edit-grade="${grade.id}"
+                aria-label="Editar nota"
+              >
+                <i data-lucide="pencil"></i>
+              </button>
 
-                <button
-                  class="table-action danger"
-                  type="button"
-                  data-delete-grade="${grade.id}"
-                  aria-label="Excluir nota"
-                >
-                  <i data-lucide="trash-2"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `
-      )
+              <button
+                class="table-action danger"
+                type="button"
+                data-delete-grade="${grade.id}"
+                aria-label="Excluir nota"
+              >
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `)
       .join("");
 
   toggleEmpty(
@@ -1728,14 +1480,11 @@ function renderAttendance(state) {
       (record) =>
         (
           classId === "todos" ||
-          record.students
-            ?.class_id ===
-            classId
+          record.students?.class_id === classId
         ) &&
         (
           !date ||
-          record.attendance_date ===
-            date
+          record.attendance_date === date
         )
     );
 
@@ -1744,59 +1493,63 @@ function renderAttendance(state) {
 
   body.innerHTML =
     filtered
-      .map(
-        (record) => `
-          <tr>
-            <td>
-              ${formatDate(record.attendance_date)}
-            </td>
+      .map((record) => `
+        <tr>
+          <td>
+            ${formatDate(record.attendance_date)}
+          </td>
 
-            <td>
-              ${escapeHTML(record.students?.profiles?.full_name ?? "Aluno")}
-            </td>
+          <td>
+            ${escapeHTML(
+              record.students?.profiles?.full_name ??
+              "Aluno"
+            )}
+          </td>
 
-            <td>
-              ${escapeHTML(record.students?.classes?.name ?? "—")}
-            </td>
+          <td>
+            ${escapeHTML(
+              record.students?.classes?.name ??
+              "—"
+            )}
+          </td>
 
-            <td>
-              ${escapeHTML(record.subjects?.name ?? "—")}
-            </td>
+          <td>
+            ${escapeHTML(record.subjects?.name ?? "—")}
+          </td>
 
-            <td>
-              <span class="status-badge ${attendanceTone(record.status)}">
-                ${escapeHTML(attendanceLabel(record.status))}
-              </span>
-            </td>
+          <td>
+            <span class="status-badge ${attendanceTone(record.status)}">
+              ${escapeHTML(attendanceLabel(record.status))}
+            </span>
+          </td>
 
-            <td>
-              ${escapeHTML(record.notes || "—")}
-            </td>
+          <td>
+            ${escapeHTML(record.notes || "—")}
+          </td>
 
-            <td>
-              <div class="table-actions">
-                <button
-                  class="table-action"
-                  type="button"
-                  data-edit-attendance="${record.id}"
-                  aria-label="Editar frequência"
-                >
-                  <i data-lucide="pencil"></i>
-                </button>
+          <td>
+            <div class="table-actions">
+              <button
+                class="table-action"
+                type="button"
+                data-edit-attendance="${record.id}"
+                aria-label="Editar frequência"
+              >
+                <i data-lucide="pencil"></i>
+              </button>
 
-                <button
-                  class="table-action danger"
-                  type="button"
-                  data-delete-attendance="${record.id}"
-                  aria-label="Excluir frequência"
-                >
-                  <i data-lucide="trash-2"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `
-      )
+              <button
+                class="table-action danger"
+                type="button"
+                data-delete-attendance="${record.id}"
+                aria-label="Excluir frequência"
+              >
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `)
       .join("");
 
   toggleEmpty(
@@ -1819,70 +1572,50 @@ function renderReport(state) {
 
   const rows =
     Object.entries(grouped)
-      .map(
-        ([
-          subject,
-          grades
-        ]) => {
-          const terms =
-            [1, 2, 3, 4].map(
-              (term) => {
-                const values =
-                  grades
-                    .filter(
-                      (grade) =>
-                        grade.term ===
-                        term
-                    )
-                    .map(
-                      (grade) =>
-                        Number(
-                          grade.score
-                        )
-                    );
+      .map(([subject, grades]) => {
+        const terms =
+          [1, 2, 3, 4].map((term) => {
+            const values =
+              grades
+                .filter(
+                  (grade) =>
+                    grade.term === term
+                )
+                .map(
+                  (grade) =>
+                    Number(grade.score)
+                );
 
-                return values.length
-                  ? values.reduce(
-                      (
-                        sum,
-                        value
-                      ) =>
-                        sum +
-                        value,
-                      0
-                    ) /
-                    values.length
-                  : null;
-              }
-            );
-
-          const valid =
-            terms.filter(
-              (value) =>
-                value !== null
-            );
-
-          const average =
-            valid.length
-              ? valid.reduce(
-                  (
-                    sum,
-                    value
-                  ) =>
-                    sum +
-                    value,
+            return values.length
+              ? values.reduce(
+                  (sum, value) =>
+                    sum + value,
                   0
-                ) /
-                valid.length
+                ) / values.length
               : null;
+          });
 
-          return {
-            subject,
-            terms,
-            average
-          };
-        }
-      )
+        const valid =
+          terms.filter(
+            (value) =>
+              value !== null
+          );
+
+        const average =
+          valid.length
+            ? valid.reduce(
+                (sum, value) =>
+                  sum + value,
+                0
+              ) / valid.length
+            : null;
+
+        return {
+          subject,
+          terms,
+          average
+        };
+      })
       .sort(
         (a, b) =>
           a.subject.localeCompare(
@@ -1895,61 +1628,59 @@ function renderReport(state) {
 
   body.innerHTML =
     rows
-      .map(
-        (row) => `
-          <tr>
-            <td>
-              <strong>
-                ${escapeHTML(row.subject)}
-              </strong>
-            </td>
+      .map((row) => `
+        <tr>
+          <td>
+            <strong>
+              ${escapeHTML(row.subject)}
+            </strong>
+          </td>
 
-            ${row.terms
-              .map(
-                (value) => `
-                  <td>
-                    ${
-                      value === null
-                        ? "—"
-                        : value.toFixed(1)
-                    }
-                  </td>
-                `
-              )
-              .join("")}
+          ${row.terms
+            .map(
+              (value) => `
+                <td>
+                  ${
+                    value === null
+                      ? "—"
+                      : value.toFixed(1)
+                  }
+                </td>
+              `
+            )
+            .join("")}
 
-            <td>
-              <span class="score">
-                ${
-                  row.average === null
-                    ? "—"
-                    : row.average.toFixed(1)
-                }
-              </span>
-            </td>
-
-            <td>
+          <td>
+            <span class="score">
               ${
                 row.average === null
                   ? "—"
-                  : `
-                    <span class="status-badge ${
-                      row.average >= 6
-                        ? "status-success"
-                        : "status-warning"
-                    }">
-                      ${
-                        row.average >= 6
-                          ? "Aprovado"
-                          : "Em recuperação"
-                      }
-                    </span>
-                  `
+                  : row.average.toFixed(1)
               }
-            </td>
-          </tr>
-        `
-      )
+            </span>
+          </td>
+
+          <td>
+            ${
+              row.average === null
+                ? "—"
+                : `
+                  <span class="status-badge ${
+                    row.average >= 6
+                      ? "status-success"
+                      : "status-warning"
+                  }">
+                    ${
+                      row.average >= 6
+                        ? "Aprovado"
+                        : "Em recuperação"
+                    }
+                  </span>
+                `
+            }
+          </td>
+        </tr>
+      `)
       .join("");
 
   toggleEmpty(
@@ -1960,10 +1691,7 @@ function renderReport(state) {
 
   const averages =
     rows
-      .map(
-        (row) =>
-          row.average
-      )
+      .map((row) => row.average)
       .filter(
         (value) =>
           value !== null
@@ -1972,43 +1700,31 @@ function renderReport(state) {
   const general =
     averages.length
       ? averages.reduce(
-          (
-            sum,
-            value
-          ) =>
-            sum +
-            value,
+          (sum, value) =>
+            sum + value,
           0
-        ) /
-        averages.length
+        ) / averages.length
       : null;
 
   $("#report-summary").innerHTML =
     [
       {
-        label:
-          "Média geral",
+        label: "Média geral",
         value:
           general === null
             ? "—"
             : general.toFixed(1),
-        icon:
-          "chart-no-axes-combined",
+        icon: "chart-no-axes-combined",
         tone: ""
       },
       {
-        label:
-          "Disciplinas",
-        value:
-          rows.length,
-        icon:
-          "library-big",
-        tone:
-          "purple"
+        label: "Disciplinas",
+        value: rows.length,
+        icon: "library-big",
+        tone: "purple"
       },
       {
-        label:
-          "Situação",
+        label: "Situação",
         value:
           general === null
             ? "Aguardando"
@@ -2044,29 +1760,23 @@ function renderStudentAttendance(state) {
 
   const cards =
     Object.entries(grouped).map(
-      ([
-        subject,
-        records
-      ]) => {
+      ([subject, records]) => {
         const present =
           records.filter(
             (record) =>
-              record.status ===
-              "presente"
+              record.status === "presente"
           ).length;
 
         const justified =
           records.filter(
             (record) =>
-              record.status ===
-              "justificada"
+              record.status === "justificada"
           ).length;
 
         const absences =
           records.filter(
             (record) =>
-              record.status ===
-              "falta"
+              record.status === "falta"
           ).length;
 
         const frequency =
@@ -2097,8 +1807,7 @@ function renderStudentAttendance(state) {
   const validPresence =
     all.filter(
       (record) =>
-        record.status !==
-        "falta"
+        record.status !== "falta"
     ).length;
 
   const totalFrequency =
@@ -2113,43 +1822,33 @@ function renderStudentAttendance(state) {
   $("#student-attendance-summary").innerHTML =
     [
       {
-        label:
-          "Frequência geral",
+        label: "Frequência geral",
         value:
           all.length
             ? `${totalFrequency.toFixed(1)}%`
             : "—",
-        icon:
-          "calendar-check",
-        tone:
-          "success"
+        icon: "calendar-check",
+        tone: "success"
       },
       {
-        label:
-          "Presenças",
+        label: "Presenças",
         value:
           all.filter(
             (item) =>
-              item.status ===
-              "presente"
+              item.status === "presente"
           ).length,
-        icon:
-          "circle-check",
+        icon: "circle-check",
         tone: ""
       },
       {
-        label:
-          "Faltas",
+        label: "Faltas",
         value:
           all.filter(
             (item) =>
-              item.status ===
-              "falta"
+              item.status === "falta"
           ).length,
-        icon:
-          "circle-x",
-        tone:
-          "warning"
+        icon: "circle-x",
+        tone: "warning"
       }
     ]
       .map(metricCard)
@@ -2158,52 +1857,50 @@ function renderStudentAttendance(state) {
   $("#student-attendance-list").innerHTML =
     cards.length
       ? cards
-          .map(
-            (item) => `
-              <article class="attendance-card">
-                <div class="attendance-card-head">
-                  <h3>
-                    ${escapeHTML(item.subject)}
-                  </h3>
+          .map((item) => `
+            <article class="attendance-card">
+              <div class="attendance-card-head">
+                <h3>
+                  ${escapeHTML(item.subject)}
+                </h3>
 
-                  <span class="status-badge ${
-                    item.frequency >= 75
-                      ? "status-success"
-                      : "status-danger"
-                  }">
-                    ${item.frequency.toFixed(1)}%
-                  </span>
-                </div>
+                <span class="status-badge ${
+                  item.frequency >= 75
+                    ? "status-success"
+                    : "status-danger"
+                }">
+                  ${item.frequency.toFixed(1)}%
+                </span>
+              </div>
 
-                <div class="progress-track">
-                  <i
-                    style="
-                      width:${item.frequency}%;
-                      background:${
-                        item.frequency >= 75
-                          ? "var(--success)"
-                          : "var(--danger)"
-                      }
-                    "
-                  ></i>
-                </div>
-
-                <div class="attendance-card-meta">
-                  <span>
-                    ${item.present} presenças
-                  </span>
-
-                  <span>
-                    ${item.absences} faltas${
-                      item.justified
-                        ? ` · ${item.justified} justificadas`
-                        : ""
+              <div class="progress-track">
+                <i
+                  style="
+                    width:${item.frequency}%;
+                    background:${
+                      item.frequency >= 75
+                        ? "var(--success)"
+                        : "var(--danger)"
                     }
-                  </span>
-                </div>
-              </article>
-            `
-          )
+                  "
+                ></i>
+              </div>
+
+              <div class="attendance-card-meta">
+                <span>
+                  ${item.present} presenças
+                </span>
+
+                <span>
+                  ${item.absences} faltas${
+                    item.justified
+                      ? ` · ${item.justified} justificadas`
+                      : ""
+                  }
+                </span>
+              </div>
+            </article>
+          `)
           .join("")
       : `
         <div class="table-card">
@@ -2228,170 +1925,94 @@ function populateSelects(state) {
   const classOptions =
     state.classes
       .map(
-        (item) => `
-          <option value="${item.id}">
-            ${escapeHTML(item.name)} — ${escapeHTML(shiftLabel(item.shift))}
-          </option>
-        `
+        (item) =>
+          `<option value="${item.id}">${escapeHTML(item.name)} — ${escapeHTML(shiftLabel(item.shift))}</option>`
       )
       .join("");
 
   $("#person-class-select").innerHTML =
-    `
-      <option value="">
-        Selecione uma turma
-      </option>
-      ${classOptions}
-    `;
+    `<option value="">Selecione uma turma</option>${classOptions}`;
 
   $("#grade-class-filter").innerHTML =
-    `
-      <option value="todos">
-        Todas as turmas
-      </option>
-      ${classOptions}
-    `;
+    `<option value="todos">Todas as turmas</option>${classOptions}`;
 
   $("#attendance-class-filter").innerHTML =
-    `
-      <option value="todos">
-        Todas as turmas
-      </option>
-      ${classOptions}
-    `;
+    `<option value="todos">Todas as turmas</option>${classOptions}`;
 
   $("#class-course-select").innerHTML =
-    `
-      <option value="">
-        Selecione um curso
-      </option>
-
-      ${state.courses
+    `<option value="">Selecione um curso</option>${
+      state.courses
         .map(
-          (item) => `
-            <option value="${item.id}">
-              ${escapeHTML(item.code)} — ${escapeHTML(item.name)}
-            </option>
-          `
+          (item) =>
+            `<option value="${item.id}">${escapeHTML(item.code)} — ${escapeHTML(item.name)}</option>`
         )
-        .join("")}
-    `;
+        .join("")
+    }`;
 
   const studentOptions =
     state.students
       .map(
-        (student) => `
-          <option value="${student.id}">
-            ${escapeHTML(
-              student.profiles?.full_name ??
-              student.registration
-            )} — ${escapeHTML(
-              student.classes?.name ??
-              "Sem turma"
-            )}
-          </option>
-        `
+        (student) =>
+          `<option value="${student.id}">${escapeHTML(
+            student.profiles?.full_name ??
+            student.registration
+          )} — ${escapeHTML(
+            student.classes?.name ??
+            "Sem turma"
+          )}</option>`
       )
       .join("");
 
   $("#grade-student-select").innerHTML =
-    `
-      <option value="">
-        Selecione um aluno
-      </option>
-      ${studentOptions}
-    `;
+    `<option value="">Selecione um aluno</option>${studentOptions}`;
 
   $("#attendance-student-select").innerHTML =
-    `
-      <option value="">
-        Selecione um aluno
-      </option>
-      ${studentOptions}
-    `;
+    `<option value="">Selecione um aluno</option>${studentOptions}`;
 
   const subjectOptions =
     state.subjects
       .map(
-        (subject) => `
-          <option value="${subject.id}">
-            ${escapeHTML(subject.name)}
-          </option>
-        `
+        (subject) =>
+          `<option value="${subject.id}">${escapeHTML(subject.name)}</option>`
       )
       .join("");
 
   $("#grade-subject-select").innerHTML =
-    `
-      <option value="">
-        Selecione uma disciplina
-      </option>
-      ${subjectOptions}
-    `;
+    `<option value="">Selecione uma disciplina</option>${subjectOptions}`;
 
   $("#attendance-subject-select").innerHTML =
-    `
-      <option value="">
-        Selecione uma disciplina
-      </option>
-      ${subjectOptions}
-    `;
+    `<option value="">Selecione uma disciplina</option>${subjectOptions}`;
 
   $("#assignment-class-select").innerHTML =
-    `
-      <option value="">
-        Selecione uma turma
-      </option>
-      ${classOptions}
-    `;
+    `<option value="">Selecione uma turma</option>${classOptions}`;
 
   $("#assignment-subject-select").innerHTML =
-    `
-      <option value="">
-        Selecione uma disciplina
-      </option>
-      ${subjectOptions}
-    `;
+    `<option value="">Selecione uma disciplina</option>${subjectOptions}`;
 
   const teacherOptions =
     state.people
       .filter(
         (person) =>
-          person.role ===
-          "professor"
+          person.role === "professor"
       )
       .map(
-        (person) => `
-          <option value="${person.id}">
-            ${escapeHTML(person.full_name)}
-          </option>
-        `
+        (person) =>
+          `<option value="${person.id}">${escapeHTML(person.full_name)}</option>`
       )
       .join("");
 
   $("#assignment-teacher-select").innerHTML =
-    `
-      <option value="">
-        Selecione um professor
-      </option>
-      ${teacherOptions}
-    `;
+    `<option value="">Selecione um professor</option>${teacherOptions}`;
 }
 
-async function submitPerson(
-  event,
-  state
-) {
+async function submitPerson(event, state) {
   event.preventDefault();
 
   const form =
     event.currentTarget;
 
   const button =
-    $(
-      "button[type='submit']",
-      form
-    );
+    $("button[type='submit']", form);
 
   const values =
     Object.fromEntries(
@@ -2426,12 +2047,15 @@ async function submitPerson(
     "Cadastrar pessoa"
   );
 
-  if (error || data?.error) {
+  if (
+    error ||
+    data?.error
+  ) {
     setFormError(
       $("#person-form-error"),
       data?.error ??
-        error?.message ??
-        "Não foi possível cadastrar a pessoa."
+      error?.message ??
+      "Não foi possível cadastrar a pessoa."
     );
 
     return;
@@ -2440,7 +2064,6 @@ async function submitPerson(
   $("#person-dialog").close();
 
   form.reset();
-
   updatePersonFields();
 
   await loadAllData(state);
@@ -2452,10 +2075,7 @@ async function submitPerson(
   );
 }
 
-async function deletePerson(
-  state,
-  userId
-) {
+async function deletePerson(state, userId) {
   setLoading(true);
 
   const { data, error } =
@@ -2471,12 +2091,15 @@ async function deletePerson(
 
   setLoading(false);
 
-  if (error || data?.error) {
+  if (
+    error ||
+    data?.error
+  ) {
     toast(
       "Não foi possível excluir",
       data?.error ??
-        error?.message ??
-        "Tente novamente.",
+      error?.message ??
+      "Tente novamente.",
       "error"
     );
 
@@ -2492,10 +2115,7 @@ async function deletePerson(
   );
 }
 
-async function submitClass(
-  event,
-  state
-) {
+async function submitClass(event, state) {
   event.preventDefault();
 
   const form =
@@ -2509,8 +2129,7 @@ async function submitClass(
   const course =
     state.courses.find(
       (item) =>
-        item.id ===
-        values.course_id
+        item.id === values.course_id
     );
 
   const name =
@@ -2525,27 +2144,12 @@ async function submitClass(
     await state.supabase
       .from("turmas")
       .insert({
-        curso_id:
-          values.course_id,
-
-        modulo:
-          Number(
-            values.module
-          ),
-
-        turno:
-          values.shift,
-
-        ano_letivo:
-          Number(
-            values.school_year
-          ),
-
-        sala:
-          values.room || null,
-
-        nome:
-          name
+        curso_id: values.course_id,
+        modulo: Number(values.module),
+        turno: values.shift,
+        ano_letivo: Number(values.school_year),
+        sala: values.room || null,
+        nome: name
       });
 
   if (error) {
@@ -2570,10 +2174,7 @@ async function submitClass(
   );
 }
 
-function openGradeDialog(
-  state,
-  grade = null
-) {
+function openGradeDialog(state, grade = null) {
   const form =
     $("#grade-form");
 
@@ -2585,11 +2186,8 @@ function openGradeDialog(
   );
 
   if (grade) {
-    form.id.value =
-      grade.id;
-
-    form.student_id.value =
-      grade.student_id;
+    form.id.value = grade.id;
+    form.student_id.value = grade.student_id;
 
     updateSubjectSelectForStudent(
       state,
@@ -2597,38 +2195,24 @@ function openGradeDialog(
       "#grade-subject-select"
     );
 
-    form.subject_id.value =
-      grade.subject_id;
+    form.subject_id.value = grade.subject_id;
+    form.term.value = grade.term;
+    form.score.value = grade.score;
+    form.assessment.value = grade.assessment;
 
-    form.term.value =
-      grade.term;
-
-    form.score.value =
-      grade.score;
-
-    form.assessment.value =
-      grade.assessment;
-
-    $("h2", $("#grade-dialog"))
-      .textContent =
-        "Editar nota";
+    $("h2", $("#grade-dialog")).textContent =
+      "Editar nota";
   } else {
     form.id.value = "";
 
-    $("h2", $("#grade-dialog"))
-      .textContent =
-        "Lançar nota";
+    $("h2", $("#grade-dialog")).textContent =
+      "Lançar nota";
   }
 
-  openDialog(
-    "grade-dialog"
-  );
+  openDialog("grade-dialog");
 }
 
-async function submitGrade(
-  event,
-  state
-) {
+async function submitGrade(event, state) {
   event.preventDefault();
 
   const form =
@@ -2640,27 +2224,12 @@ async function submitGrade(
     );
 
   const payload = {
-    aluno_id:
-      values.student_id,
-
-    disciplina_id:
-      values.subject_id,
-
-    bimestre:
-      Number(
-        values.term
-      ),
-
-    nota:
-      Number(
-        values.score
-      ),
-
-    avaliacao:
-      values.assessment,
-
-    professor_id:
-      state.profile.id
+    aluno_id: values.student_id,
+    disciplina_id: values.subject_id,
+    bimestre: Number(values.term),
+    nota: Number(values.score),
+    avaliacao: values.assessment,
+    professor_id: state.profile.id
   };
 
   setFormError(
@@ -2673,10 +2242,7 @@ async function submitGrade(
       ? state.supabase
           .from("notas")
           .update(payload)
-          .eq(
-            "id",
-            values.id
-          )
+          .eq("id", values.id)
       : state.supabase
           .from("notas")
           .insert(payload);
@@ -2706,10 +2272,7 @@ async function submitGrade(
   );
 }
 
-async function deleteGrade(
-  state,
-  id
-) {
+async function deleteGrade(state, id) {
   const { error } =
     await state.supabase
       .from("notas")
@@ -2733,10 +2296,7 @@ async function deleteGrade(
   }
 }
 
-function openAttendanceDialog(
-  state,
-  record = null
-) {
+function openAttendanceDialog(state, record = null) {
   const form =
     $("#attendance-form");
 
@@ -2751,11 +2311,8 @@ function openAttendanceDialog(
     isoDate(new Date());
 
   if (record) {
-    form.id.value =
-      record.id;
-
-    form.student_id.value =
-      record.student_id;
+    form.id.value = record.id;
+    form.student_id.value = record.student_id;
 
     updateSubjectSelectForStudent(
       state,
@@ -2763,37 +2320,24 @@ function openAttendanceDialog(
       "#attendance-subject-select"
     );
 
-    form.subject_id.value =
-      record.subject_id;
+    form.subject_id.value = record.subject_id;
+    form.attendance_date.value = record.attendance_date;
+    form.status.value = record.status;
+    form.notes.value = record.notes ?? "";
 
-    form.attendance_date.value =
-      record.attendance_date;
-
-    form.status.value =
-      record.status;
-
-    form.notes.value =
-      record.notes ?? "";
-
-    $("h2", $("#attendance-dialog"))
-      .textContent =
-        "Editar frequência";
+    $("h2", $("#attendance-dialog")).textContent =
+      "Editar frequência";
   } else {
     form.id.value = "";
 
-    $("h2", $("#attendance-dialog"))
-      .textContent =
-        "Registrar frequência";
+    $("h2", $("#attendance-dialog")).textContent =
+      "Registrar frequência";
   }
 
-  openDialog(
-    "attendance-dialog"
-  );
+  openDialog("attendance-dialog");
 }
 
-function openAssignmentDialog(
-  state
-) {
+function openAssignmentDialog(state) {
   const form =
     $("#assignment-form");
 
@@ -2810,9 +2354,7 @@ function openAssignmentDialog(
     null
   );
 
-  openDialog(
-    "assignment-dialog"
-  );
+  openDialog("assignment-dialog");
 }
 
 function updateSubjectSelectForStudent(
@@ -2823,24 +2365,20 @@ function updateSubjectSelectForStudent(
   const student =
     state.students.find(
       (item) =>
-        item.id ===
-        $(studentSelector).value
+        item.id === $(studentSelector).value
     );
 
   const schoolClass =
     state.classes.find(
       (item) =>
-        item.id ===
-        student?.class_id
+        item.id === student?.class_id
     );
 
   fillSubjectSelect(
     state,
     $(subjectSelector),
-    schoolClass?.course_id ??
-      null,
-    schoolClass?.id ??
-      null
+    schoolClass?.course_id ?? null,
+    schoolClass?.id ?? null
   );
 }
 
@@ -2852,17 +2390,14 @@ function updateSubjectSelectForClass(
   const schoolClass =
     state.classes.find(
       (item) =>
-        item.id ===
-        $(classSelector).value
+        item.id === $(classSelector).value
     );
 
   fillSubjectSelect(
     state,
     $(subjectSelector),
-    schoolClass?.course_id ??
-      null,
-    schoolClass?.id ??
-      null
+    schoolClass?.course_id ?? null,
+    schoolClass?.id ?? null
   );
 }
 
@@ -2876,14 +2411,12 @@ function fillSubjectSelect(
     courseId
       ? state.subjects.filter(
           (item) =>
-            item.course_id ===
-            courseId
+            item.course_id === courseId
         )
       : state.subjects;
 
   if (
-    state.profile?.role ===
-      "professor" &&
+    state.profile?.role === "professor" &&
     classId
   ) {
     const allowed =
@@ -2891,8 +2424,7 @@ function fillSubjectSelect(
         state.teacherAssignments
           .filter(
             (item) =>
-              item.class_id ===
-              classId
+              item.class_id === classId
           )
           .map(
             (item) =>
@@ -2903,34 +2435,22 @@ function fillSubjectSelect(
     subjects =
       subjects.filter(
         (item) =>
-          allowed.has(
-            item.id
-          )
+          allowed.has(item.id)
       );
   }
 
   select.innerHTML =
-    `
-      <option value="">
-        Selecione uma disciplina
-      </option>
-
-      ${subjects
+    `<option value="">Selecione uma disciplina</option>${
+      subjects
         .map(
-          (subject) => `
-            <option value="${subject.id}">
-              ${escapeHTML(subject.name)}
-            </option>
-          `
+          (subject) =>
+            `<option value="${subject.id}">${escapeHTML(subject.name)}</option>`
         )
-        .join("")}
-    `;
+        .join("")
+    }`;
 }
 
-async function submitAttendance(
-  event,
-  state
-) {
+async function submitAttendance(event, state) {
   event.preventDefault();
 
   const form =
@@ -2942,23 +2462,12 @@ async function submitAttendance(
     );
 
   const payload = {
-    aluno_id:
-      values.student_id,
-
-    disciplina_id:
-      values.subject_id,
-
-    data_aula:
-      values.attendance_date,
-
-    situacao:
-      values.status,
-
-    observacoes:
-      values.notes || null,
-
-    professor_id:
-      state.profile.id
+    aluno_id: values.student_id,
+    disciplina_id: values.subject_id,
+    data_aula: values.attendance_date,
+    situacao: values.status,
+    observacoes: values.notes || null,
+    professor_id: state.profile.id
   };
 
   setFormError(
@@ -2971,10 +2480,7 @@ async function submitAttendance(
       ? state.supabase
           .from("frequencia")
           .update(payload)
-          .eq(
-            "id",
-            values.id
-          )
+          .eq("id", values.id)
       : state.supabase
           .from("frequencia")
           .upsert(
@@ -3008,10 +2514,7 @@ async function submitAttendance(
   );
 }
 
-async function deleteAttendance(
-  state,
-  id
-) {
+async function deleteAttendance(state, id) {
   const { error } =
     await state.supabase
       .from("frequencia")
@@ -3035,10 +2538,7 @@ async function deleteAttendance(
   }
 }
 
-async function submitAssignment(
-  event,
-  state
-) {
+async function submitAssignment(event, state) {
   event.preventDefault();
 
   const form =
@@ -3056,18 +2556,11 @@ async function submitAssignment(
 
   const { error } =
     await state.supabase
-      .from(
-        "atribuicoes_professores"
-      )
+      .from("atribuicoes_professores")
       .insert({
-        professor_id:
-          values.teacher_id,
-
-        turma_id:
-          values.class_id,
-
-        disciplina_id:
-          values.subject_id
+        professor_id: values.teacher_id,
+        turma_id: values.class_id,
+        disciplina_id: values.subject_id
       });
 
   if (error) {
@@ -3094,15 +2587,10 @@ async function submitAssignment(
   );
 }
 
-async function deleteAssignment(
-  state,
-  id
-) {
+async function deleteAssignment(state, id) {
   const { error } =
     await state.supabase
-      .from(
-        "atribuicoes_professores"
-      )
+      .from("atribuicoes_professores")
       .delete()
       .eq("id", id);
 
@@ -3123,31 +2611,21 @@ async function deleteAssignment(
   }
 }
 
-function navigateTo(
-  state,
-  view
-) {
+function navigateTo(state, view) {
   const target =
-    $(
-      `[data-view-panel="${view}"]`
-    );
+    $(`[data-view-panel="${view}"]`);
 
   const nav =
-    $(
-      `.nav-item[data-view="${view}"]`
-    );
+    $(`.nav-item[data-view="${view}"]`);
 
   if (
     !target ||
-    nav?.classList.contains(
-      "hidden"
-    )
+    nav?.classList.contains("hidden")
   ) {
     return;
   }
 
-  state.currentView =
-    view;
+  state.currentView = view;
 
   $$(".view").forEach(
     (panel) =>
@@ -3161,8 +2639,7 @@ function navigateTo(
     (item) =>
       item.classList.toggle(
         "active",
-        item.dataset.view ===
-          view
+        item.dataset.view === view
       )
   );
 
@@ -3171,32 +2648,26 @@ function navigateTo(
       "Portal acadêmico",
       "Visão geral"
     ],
-
     pessoas: [
       "Administração",
       "Pessoas"
     ],
-
     turmas: [
       "Gestão acadêmica",
       "Turmas"
     ],
-
     notas: [
       "Gestão acadêmica",
       "Notas"
     ],
-
     frequencia: [
       "Gestão acadêmica",
       "Frequência"
     ],
-
     boletim: [
       "Área do aluno",
       "Meu boletim"
     ],
-
     "minha-frequencia": [
       "Área do aluno",
       "Minha frequência"
@@ -3219,27 +2690,19 @@ function navigateTo(
   });
 }
 
-function applyRolePermissions(
-  role
-) {
-  $$("[data-roles]").forEach(
-    (element) => {
-      const allowed =
-        element.dataset.roles.split(
-          ","
-        );
+function applyRolePermissions(role) {
+  $$("[data-roles]").forEach((element) => {
+    const allowed =
+      element.dataset.roles.split(",");
 
-      element.classList.toggle(
-        "hidden",
-        !allowed.includes(role)
-      );
-    }
-  );
+    element.classList.toggle(
+      "hidden",
+      !allowed.includes(role)
+    );
+  });
 }
 
-function updateUserIdentity(
-  profile
-) {
+function updateUserIdentity(profile) {
   const shortName =
     profile.full_name
       .split(" ")
@@ -3264,8 +2727,7 @@ function updateUserIdentity(
 
 function updatePersonFields() {
   const role =
-    $("#person-form [name='role']")
-      .value;
+    $("#person-form [name='role']").value;
 
   $$(".student-only").forEach(
     (element) =>
@@ -3296,29 +2758,18 @@ function updatePersonFields() {
 }
 
 function showAuth() {
-  appShell.classList.add(
-    "hidden"
-  );
+  appShell.classList.add("hidden");
+  setupScreen.classList.add("hidden");
+  authScreen.classList.remove("hidden");
 
-  setupScreen.classList.add(
-    "hidden"
-  );
-
-  authScreen.classList.remove(
-    "hidden"
-  );
-
-  $("#login-password").value =
-    "";
+  $("#login-password").value = "";
 
   refreshIcons();
 }
 
 function applySavedTheme() {
   const saved =
-    localStorage.getItem(
-      "escola-theme"
-    );
+    localStorage.getItem("escola-theme");
 
   const theme =
     saved ||
@@ -3338,8 +2789,7 @@ function applySavedTheme() {
 
 function toggleTheme() {
   const next =
-    document.documentElement
-      .dataset.theme ===
+    document.documentElement.dataset.theme ===
     "dark"
       ? "light"
       : "dark";
@@ -3357,18 +2807,15 @@ function toggleTheme() {
 
 function updateThemeIcons() {
   const icon =
-    document.documentElement
-      .dataset.theme ===
+    document.documentElement.dataset.theme ===
     "dark"
       ? "sun"
       : "moon";
 
-  $$(".theme-toggle").forEach(
-    (button) => {
-      button.innerHTML =
-        `<i data-lucide="${icon}"></i>`;
-    }
-  );
+  $$(".theme-toggle").forEach((button) => {
+    button.innerHTML =
+      `<i data-lucide="${icon}"></i>`;
+  });
 
   refreshIcons();
 }
@@ -3388,16 +2835,12 @@ function confirmAction(
   state.confirmCallback =
     callback;
 
-  openDialog(
-    "confirm-dialog"
-  );
+  openDialog("confirm-dialog");
 }
 
 function openDialog(id) {
   const dialog =
-    document.getElementById(
-      id
-    );
+    document.getElementById(id);
 
   if (!dialog.open) {
     dialog.showModal();
@@ -3407,18 +2850,14 @@ function openDialog(id) {
 }
 
 function setLoading(active) {
-  $("#loading-state")
-    .classList.toggle(
-      "hidden",
-      !active
-    );
+  $("#loading-state").classList.toggle(
+    "hidden",
+    !active
+  );
 }
 
 function closeSidebar() {
-  $("#sidebar")
-    .classList.remove(
-      "open"
-    );
+  $("#sidebar").classList.remove("open");
 }
 
 function setButtonLoading(
@@ -3426,18 +2865,15 @@ function setButtonLoading(
   active,
   text
 ) {
-  button.disabled =
-    active;
+  button.disabled = active;
 
   const label =
     $("span", button);
 
   if (label) {
-    label.textContent =
-      text;
+    label.textContent = text;
   } else {
-    button.textContent =
-      text;
+    button.textContent = text;
   }
 }
 
@@ -3445,8 +2881,7 @@ function setFormError(
   element,
   message
 ) {
-  element.textContent =
-    message;
+  element.textContent = message;
 
   element.classList.toggle(
     "hidden",
@@ -3478,34 +2913,19 @@ function toast(
   type = "success"
 ) {
   const element =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
   element.className =
     `toast ${type}`;
 
   element.innerHTML =
-    `
-      <i data-lucide="${
-        type === "success"
-          ? "circle-check"
-          : "circle-alert"
-      }"></i>
+    `<i data-lucide="${
+      type === "success"
+        ? "circle-check"
+        : "circle-alert"
+    }"></i><span><strong>${escapeHTML(title)}</strong><span>${escapeHTML(message)}</span></span>`;
 
-      <span>
-        <strong>
-          ${escapeHTML(title)}
-        </strong>
-
-        <span>
-          ${escapeHTML(message)}
-        </span>
-      </span>
-    `;
-
-  $("#toast-region")
-    .appendChild(element);
+  $("#toast-region").appendChild(element);
 
   refreshIcons();
 
@@ -3523,30 +2943,21 @@ function refreshIcons() {
   });
 }
 
-function getSpecializedProfile(
-  person
-) {
-  return person.role ===
-    "aluno"
+function getSpecializedProfile(person) {
+  return person.role === "aluno"
     ? person.students?.[0]
-    : person.role ===
-        "professor"
+    : person.role === "professor"
       ? person.teachers?.[0]
       : person.employees?.[0];
 }
 
-function groupBy(
-  items,
-  keyFn
-) {
+function groupBy(items, keyFn) {
   return items.reduce(
     (groups, item) => {
-      const key =
-        keyFn(item);
+      const key = keyFn(item);
 
       (
-        groups[key] ||=
-        []
+        groups[key] ||= []
       ).push(item);
 
       return groups;
@@ -3555,24 +2966,19 @@ function groupBy(
   );
 }
 
-function initials(
-  name = ""
-) {
+function initials(name = "") {
   return name
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map(
-      (word) =>
-        word[0]
+      (word) => word[0]
     )
     .join("")
     .toUpperCase();
 }
 
-function normalize(
-  value = ""
-) {
+function normalize(value = "") {
   return value
     .normalize("NFD")
     .replace(
@@ -3585,53 +2991,32 @@ function normalize(
 
 function roleLabel(role) {
   return {
-    aluno:
-      "Aluno",
-
-    professor:
-      "Professor",
-
-    funcionario:
-      "Funcionário"
+    aluno: "Aluno",
+    professor: "Professor",
+    funcionario: "Funcionário"
   }[role] ?? role;
 }
 
 function shiftLabel(shift) {
   return {
-    manha:
-      "Manhã",
-
-    tarde:
-      "Tarde",
-
-    noite:
-      "Noite"
+    manha: "Manhã",
+    tarde: "Tarde",
+    noite: "Noite"
   }[shift] ?? shift;
 }
 
-function attendanceLabel(
-  status
-) {
+function attendanceLabel(status) {
   return {
-    presente:
-      "Presente",
-
-    falta:
-      "Falta",
-
-    justificada:
-      "Justificada"
+    presente: "Presente",
+    falta: "Falta",
+    justificada: "Justificada"
   }[status] ?? status;
 }
 
-function attendanceTone(
-  status
-) {
-  return status ===
-    "presente"
+function attendanceTone(status) {
+  return status === "presente"
     ? "status-success"
-    : status ===
-        "justificada"
+    : status === "justificada"
       ? "status-warning"
       : "status-danger";
 }
@@ -3655,23 +3040,15 @@ function isoDate(date) {
     .slice(0, 10);
 }
 
-function friendlyAuthError(
-  message
-) {
-  return /Invalid login credentials/i.test(
-    message
-  )
+function friendlyAuthError(message) {
+  return /Invalid login credentials/i.test(message)
     ? "E-mail ou senha incorretos."
-    : /Email not confirmed/i.test(
-          message
-        )
+    : /Email not confirmed/i.test(message)
       ? "Confirme seu e-mail antes de entrar."
       : "Não foi possível entrar. Verifique os dados e tente novamente.";
 }
 
-function escapeHTML(
-  value = ""
-) {
+function escapeHTML(value = "") {
   return String(value).replace(
     /[&<>'"]/g,
     (char) =>
