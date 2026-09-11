@@ -68,23 +68,6 @@
             Acompanhe notas, frequência e turmas com acesso específico para
             cada perfil.
           </p>
-
-          <div class="auth-stats" aria-label="Recursos do portal">
-            <div>
-              <strong>3</strong>
-              <span>tipos de acesso</span>
-            </div>
-
-            <div>
-              <strong>5</strong>
-              <span>cursos técnicos</span>
-            </div>
-
-            <div>
-              <strong>100%</strong>
-              <span>responsivo</span>
-            </div>
-          </div>
         </div>
 
         <p class="auth-footer">
@@ -364,7 +347,7 @@
             <div class="welcome-strip">
               <div>
                 <span id="today-label" class="eyebrow"></span>
-                <h2 id="welcome-title">Olá!</h2>
+                                <h2 id="welcome-title">Olá!</h2>
 
                 <p id="welcome-subtitle">
                   Aqui está o resumo da sua vida escolar.
@@ -714,7 +697,7 @@
             data-roles="professor,funcionario"
           >
             <div class="section-toolbar">
-              <div>
+                            <div>
                 <h2>Fazer chamada</h2>
 
                 <p>
@@ -1038,7 +1021,97 @@
         </div>
       </form>
     </dialog>
+<dialog id="access-dialog" class="modal">
+  <form id="access-form" class="modal-card modal-small">
+    <input name="user_id" type="hidden" />
 
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Segurança da conta</span>
+        <h2>Alterar acesso</h2>
+      </div>
+
+      <button
+        class="icon-button modal-close"
+        type="button"
+        aria-label="Fechar"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <div class="access-person-card">
+      <span id="access-person-avatar" class="avatar">--</span>
+
+      <div>
+        <strong id="access-person-name">Pessoa</strong>
+        <span id="access-person-role">Perfil</span>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label class="field field-span-2">
+        <span>Novo e-mail</span>
+
+        <input
+          name="email"
+          type="email"
+          autocomplete="off"
+          required
+        />
+      </label>
+
+      <label class="field field-span-2">
+        <span>Nova senha</span>
+
+        <input
+          name="password"
+          type="password"
+          minlength="6"
+          autocomplete="new-password"
+          placeholder="Deixe em branco para manter a senha atual"
+        />
+
+        <small>Mínimo de 6 caracteres</small>
+      </label>
+
+      <label class="field field-span-2">
+        <span>Confirmar nova senha</span>
+
+        <input
+          name="password_confirmation"
+          type="password"
+          minlength="6"
+          autocomplete="new-password"
+          placeholder="Repita a nova senha"
+        />
+      </label>
+    </div>
+
+    <p class="access-warning">
+      O aluno ou professor deverá usar o novo e-mail no próximo acesso.
+    </p>
+
+    <p
+      id="access-form-error"
+      class="form-error hidden"
+      role="alert"
+    ></p>
+
+    <div class="modal-actions">
+      <button
+        class="button button-secondary modal-close"
+        type="button"
+      >
+        Cancelar
+      </button>
+
+      <button class="button button-primary" type="submit">
+        <span>Salvar acesso</span>
+      </button>
+    </div>
+  </form>
+</dialog>
     <dialog id="class-dialog" class="modal">
       <form id="class-form" class="modal-card modal-small">
         <div class="modal-head">
@@ -1064,8 +1137,7 @@
 
           <label class="field">
             <span>Módulo</span>
-
-            <select name="module" required>
+                        <select name="module" required>
               <option value="1">1º módulo</option>
               <option value="2">2º módulo</option>
               <option value="3">3º módulo</option>

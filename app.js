@@ -509,7 +509,14 @@ function bindStaticEvents(state) {
         state
       )
   );
-
+$("#access-form").addEventListener(
+  "submit",
+  (event) =>
+    submitAccessChange(
+      event,
+      state
+    )
+);
   $("#class-form").addEventListener(
     "submit",
     (event) =>
@@ -715,7 +722,23 @@ function bindStaticEvents(state) {
             )
         );
       }
+const editAccessButton =
+  event.target.closest(
+    "[data-edit-access]"
+  );
 
+if (editAccessButton) {
+  const person =
+    state.people.find(
+      (item) =>
+        item.id ===
+        editAccessButton.dataset.editAccess
+    );
+
+  if (person) {
+    openAccessDialog(person);
+  }
+}
       const editGradeButton =
         event.target.closest(
           "[data-edit-grade]"
@@ -2099,6 +2122,21 @@ function renderPeople(state) {
 
               <td>
                 <div class="table-actions">
+                ${
+  ["aluno", "professor"].includes(person.role)
+    ? `
+      <button
+        class="table-action"
+        type="button"
+        data-edit-access="${person.id}"
+        aria-label="Alterar acesso de ${escapeHTML(person.full_name)}"
+        title="Alterar e-mail e senha"
+      >
+        <i data-lucide="key-round"></i>
+      </button>
+    `
+    : ""
+}
                   <button
                     class="table-action danger"
                     type="button"
@@ -3579,7 +3617,148 @@ async function deletePerson(state, userId) {
     "success"
   );
 }
+function openAccessDialog(person) {
+  if (
+    !["aluno", "professor"].includes(person.role)
+  ) {
+    return;
+  }
 
+  const form = $("#access-form");
+
+  form.reset();
+
+  form.elements.user_id.value = person.id;
+  form.elements.email.value = person.email;
+
+  $("#access-person-avatar").textContent =
+    initials(person.full_name);
+
+  $("#access-person-name").textContent =
+    person.full_name;
+
+  $("#access-person-role").textContent =
+    roleLabel(person.role);
+
+  setFormError(
+    $("#access-form-error"),
+    ""
+  );
+
+  openDialog("access-dialog");
+}
+
+async function submitAccessChange(event, state) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  const button = $(
+    "button[type='submit']",
+    form
+  );
+
+  const userId =
+    form.elements.user_id.value;
+
+  const email =
+    form.elements.email.value
+      .trim()
+      .toLowerCase();
+
+  const password =
+    form.elements.password.value;
+
+  const passwordConfirmation =
+    form.elements.password_confirmation.value;
+
+  setFormError(
+    $("#access-form-error"),
+    ""
+  );
+
+  if (
+    password &&
+    password.length < 6
+  ) {
+    setFormError(
+      $("#access-form-error"),
+      "A nova senha precisa ter pelo menos 6 caracteres."
+    );
+
+    return;
+  }
+
+  if (
+    password !== passwordConfirmation
+  ) {
+    setFormError(
+      $("#access-form-error"),
+      "As duas senhas não são iguais."
+    );
+
+    return;
+  }
+
+  setButtonLoading(
+    button,
+    true,
+    "Salvando..."
+  );
+
+  const {
+    data,
+    error
+  } = await state.supabase.functions.invoke(
+    "manage-user",
+    {
+      body: {
+        action: "update_credentials",
+        user_id: userId,
+        email,
+        password: password || undefined
+      }
+    }
+  );
+
+  setButtonLoading(
+    button,
+    false,
+    "Salvar acesso"
+  );
+
+  if (
+    error ||
+    data?.error
+  ) {
+    const message =
+      await getFunctionErrorMessage(
+        error,
+        data,
+        "Não foi possível alterar o acesso."
+      );
+
+    setFormError(
+      $("#access-form-error"),
+      message
+    );
+
+    return;
+  }
+
+  $("#access-dialog").close();
+
+  form.reset();
+
+  await loadAllData(state);
+
+  toast(
+    "Acesso atualizado",
+    data?.message ??
+      "Os dados de acesso foram atualizados.",
+    "success"
+  );
+}
 async function submitClass(event, state) {
   event.preventDefault();
 
@@ -5589,7 +5768,33 @@ function friendlyAuthError(message) {
         ? "Confirme seu e-mail antes de entrar."
         : "Não foi possível entrar. Verifique os dados e tente novamente.";
 }
+async function getFunctionErrorMessage(
+  error,
+  data,
+  fallback
+) {
+  if (data?.error) {
+    return data.error;
+  }
 
+  const response = error?.context;
+
+  if (response instanceof Response) {
+    try {
+      const payload = await response
+        .clone()
+        .json();
+
+      if (payload?.error) {
+        return payload.error;
+      }
+    } catch {
+      // A resposta não continha JSON.
+    }
+  }
+
+  return error?.message ?? fallback;
+}
 function escapeHTML(value = "") {
   return String(
     value
