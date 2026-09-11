@@ -361,7 +361,94 @@ function bindStaticEvents(state) {
   $("#new-attendance-button").addEventListener(
     "click",
     () =>
-      openAttendanceDialog(
+      openRollCall(
+        state
+      )
+  );
+
+  $("#attendance-back-button").addEventListener(
+    "click",
+    () =>
+      navigateTo(
+        state,
+        "frequencia"
+      )
+  );
+
+  $("#roll-call-class-select").addEventListener(
+    "change",
+    () => {
+      updateRollCallSubjectSelect(
+        state
+      );
+
+      renderRollCallRoster(
+        state
+      );
+    }
+  );
+
+  $("#roll-call-subject-select").addEventListener(
+    "change",
+    () =>
+      renderRollCallRoster(
+        state
+      )
+  );
+
+  $("#roll-call-date").addEventListener(
+    "change",
+    () =>
+      renderRollCallRoster(
+        state
+      )
+  );
+
+  $("#mark-all-present-button").addEventListener(
+    "click",
+    () => {
+      $$(".roll-call-row", $("#roll-call-list"))
+        .forEach(
+          (row) =>
+            setRollCallRowStatus(
+              row,
+              "presente"
+            )
+        );
+
+      updateRollCallCounters();
+    }
+  );
+
+  $("#roll-call-list").addEventListener(
+    "click",
+    (event) => {
+      const button =
+        event.target.closest(
+          "[data-roll-call-status]"
+        );
+
+      if (!button) {
+        return;
+      }
+
+      setRollCallRowStatus(
+        button.closest(
+          ".roll-call-row"
+        ),
+        button.dataset
+          .rollCallStatus
+      );
+
+      updateRollCallCounters();
+    }
+  );
+
+  $("#roll-call-form").addEventListener(
+    "submit",
+    (event) =>
+      submitRollCall(
+        event,
         state
       )
   );
@@ -861,7 +948,7 @@ async function loadAllData(state) {
     (cursosR.data ?? [])
       .map(
         (x) => ({
-          id: x.id,
+                    id: x.id,
           code: x.codigo,
           name: x.nome
         })
@@ -1280,6 +1367,10 @@ function renderCurrentData(state) {
     );
 
     renderAttendance(
+      state
+    );
+
+    renderRollCallRoster(
       state
     );
   } else {
@@ -1807,7 +1898,7 @@ function renderManagementPerformance(state) {
     );
 
   const rows =
-    Object.entries(
+      Object.entries(
       courseCounts
     )
       .sort(
@@ -2757,7 +2848,7 @@ function renderStudentAttendance(state) {
     );
 
   const cards =
-    Object.entries(
+      Object.entries(
       grouped
     )
       .map(
@@ -3262,6 +3353,15 @@ function populateSelects(state) {
   $("#attendance-class-filter").innerHTML =
     `<option value="todos">Todas as turmas</option>${visibleClassOptions}`;
 
+  $("#roll-call-class-select").innerHTML =
+    `<option value="">Selecione uma turma</option>${visibleClassOptions}`;
+
+  $("#roll-call-subject-select").innerHTML =
+    `<option value="">Selecione primeiro uma turma</option>`;
+
+  $("#roll-call-subject-select").disabled =
+    true;
+
   $("#class-course-select").innerHTML =
     `<option value="">Selecione um curso</option>${
       state.courses
@@ -3698,7 +3798,7 @@ async function submitGrade(event, state) {
           .update(
             payload
           )
-          .eq(
+                    .eq(
             "id",
             values.id
           )
@@ -3766,6 +3866,658 @@ async function deleteGrade(state, id) {
       "success"
     );
   }
+}
+
+function getAllowedSubjectsForClass(
+  state,
+  classId
+) {
+  const schoolClass =
+    state.classes.find(
+      (item) =>
+        item.id ===
+        classId
+    );
+
+  if (!schoolClass) {
+    return [];
+  }
+
+  let subjects =
+    state.subjects.filter(
+      (item) =>
+        item.course_id ===
+        schoolClass.course_id
+    );
+
+  if (
+    state.profile?.role ===
+    "professor"
+  ) {
+    const allowedIds =
+      new Set(
+        state.teacherAssignments
+          .filter(
+            (item) =>
+              item.teacher_id ===
+                state.profile.id &&
+              item.class_id ===
+                classId
+          )
+          .map(
+            (item) =>
+              item.subject_id
+          )
+      );
+
+    subjects =
+      subjects.filter(
+        (item) =>
+          allowedIds.has(
+            item.id
+          )
+      );
+  }
+
+  return subjects.sort(
+    (a, b) =>
+      a.name.localeCompare(
+        b.name,
+        "pt-BR"
+      )
+  );
+}
+
+function openRollCall(state) {
+  const form =
+    $("#roll-call-form");
+
+  const classSelect =
+    $("#roll-call-class-select");
+
+  const historyClass =
+    $("#attendance-class-filter")
+      .value;
+
+  form.reset();
+
+  $("#roll-call-date").value =
+    isoDate(
+      new Date()
+    );
+
+  setFormError(
+    $("#roll-call-form-error"),
+    ""
+  );
+
+  if (
+    historyClass !==
+      "todos" &&
+    [...classSelect.options]
+      .some(
+        (option) =>
+          option.value ===
+          historyClass
+      )
+  ) {
+    classSelect.value =
+      historyClass;
+  } else if (
+    classSelect.options.length ===
+    2
+  ) {
+    classSelect.selectedIndex =
+      1;
+  }
+
+  updateRollCallSubjectSelect(
+    state
+  );
+
+  renderRollCallRoster(
+    state
+  );
+
+  navigateTo(
+    state,
+    "chamada"
+  );
+}
+
+function updateRollCallSubjectSelect(state) {
+  const classId =
+    $("#roll-call-class-select")
+      .value;
+
+  const select =
+    $("#roll-call-subject-select");
+
+  const previousValue =
+    select.value;
+
+  const subjects =
+    getAllowedSubjectsForClass(
+      state,
+      classId
+    );
+
+  if (!classId) {
+    select.innerHTML =
+      `<option value="">Selecione primeiro uma turma</option>`;
+
+    select.disabled =
+      true;
+
+    return;
+  }
+
+  select.innerHTML =
+    `<option value="">Selecione uma disciplina</option>${
+      subjects
+        .map(
+          (subject) =>
+            `<option value="${subject.id}">${escapeHTML(subject.name)}</option>`
+        )
+        .join("")
+    }`;
+
+  select.disabled =
+    subjects.length ===
+    0;
+
+  if (
+    subjects.some(
+      (subject) =>
+        subject.id ===
+        previousValue
+    )
+  ) {
+    select.value =
+      previousValue;
+  } else if (
+    subjects.length ===
+    1
+  ) {
+    select.value =
+      subjects[0].id;
+  }
+}
+
+function renderRollCallRoster(state) {
+  const classId =
+    $("#roll-call-class-select")
+      .value;
+
+  const subjectId =
+    $("#roll-call-subject-select")
+      .value;
+
+  const date =
+    $("#roll-call-date")
+      .value;
+
+  const list =
+    $("#roll-call-list");
+
+  const empty =
+    $("#roll-call-empty");
+
+  const saveButton =
+    $("#save-roll-call-button");
+
+  const markAllButton =
+    $("#mark-all-present-button");
+
+  const schoolClass =
+    state.classes.find(
+      (item) =>
+        item.id ===
+        classId
+    );
+
+  const subject =
+    getAllowedSubjectsForClass(
+      state,
+      classId
+    ).find(
+      (item) =>
+        item.id ===
+        subjectId
+    );
+
+  if (
+    !schoolClass ||
+    !subject ||
+    !date
+  ) {
+    list.innerHTML =
+      "";
+
+    list.classList.add(
+      "hidden"
+    );
+
+    empty.classList.remove(
+      "hidden"
+    );
+
+    empty.innerHTML = `
+      <i data-lucide="users"></i>
+      <h3>Selecione os dados da aula</h3>
+      <p>A lista completa da turma aparecerá aqui.</p>
+    `;
+
+    $("#roll-call-title").textContent =
+      "Selecione turma, disciplina e data";
+
+    saveButton.disabled =
+      true;
+
+    markAllButton.disabled =
+      true;
+
+    updateRollCallCounters();
+    refreshIcons();
+    return;
+  }
+
+  const students =
+    state.students
+      .filter(
+        (student) =>
+          student.class_id ===
+          classId
+      )
+      .sort(
+        (a, b) =>
+          (
+            a.profiles
+              ?.full_name ??
+            a.registration ??
+            ""
+          ).localeCompare(
+            b.profiles
+              ?.full_name ??
+            b.registration ??
+            "",
+            "pt-BR"
+          )
+      );
+
+  $("#roll-call-title").textContent =
+    `${schoolClass.name} · ${subject.name}`;
+
+  if (
+    students.length ===
+    0
+  ) {
+    list.innerHTML =
+      "";
+
+    list.classList.add(
+      "hidden"
+    );
+
+    empty.classList.remove(
+      "hidden"
+    );
+
+    empty.innerHTML = `
+      <i data-lucide="user-x"></i>
+      <h3>Nenhum aluno nesta turma</h3>
+      <p>Cadastre ou vincule alunos antes de fazer a chamada.</p>
+    `;
+
+    saveButton.disabled =
+      true;
+
+    markAllButton.disabled =
+      true;
+
+    updateRollCallCounters();
+    refreshIcons();
+    return;
+  }
+
+  const existingByStudent =
+    new Map(
+      state.attendance
+        .filter(
+          (record) =>
+            record.subject_id ===
+              subjectId &&
+            record.attendance_date ===
+              date
+        )
+        .map(
+          (record) => [
+            record.student_id,
+            record
+          ]
+        )
+    );
+
+  list.innerHTML =
+    students
+      .map(
+        (student, index) => {
+          const existing =
+            existingByStudent.get(
+              student.id
+            );
+
+          const status =
+            existing?.status ===
+            "presente"
+              ? "presente"
+              : existing
+                ? "falta"
+                : "presente";
+
+          const name =
+            student.profiles
+              ?.full_name ??
+            student.registration ??
+            "Aluno";
+
+          return `
+            <div class="roll-call-row" data-student-id="${student.id}" data-status="${status}">
+              <span class="roll-call-number">${String(index + 1).padStart(2, "0")}</span>
+
+              <div class="roll-call-student">
+                <strong>${escapeHTML(name)}</strong>
+                <span>Matrícula: ${escapeHTML(student.registration ?? "Não informada")}</span>
+              </div>
+
+              <div class="roll-call-status" role="group" aria-label="Situação de ${escapeHTML(name)}">
+                <button
+                  class="attendance-choice present${status === "presente" ? " active" : ""}"
+                  type="button"
+                  data-roll-call-status="presente"
+                  aria-pressed="${status === "presente"}"
+                >
+                  <i data-lucide="check"></i>
+                  <span>Presente</span>
+                </button>
+
+                <button
+                  class="attendance-choice absent${status === "falta" ? " active" : ""}"
+                  type="button"
+                  data-roll-call-status="falta"
+                  aria-pressed="${status === "falta"}"
+                >
+                  <i data-lucide="x"></i>
+                  <span>Faltou</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      )
+      .join("");
+
+  list.classList.remove(
+    "hidden"
+  );
+
+  empty.classList.add(
+    "hidden"
+  );
+
+  saveButton.disabled =
+    false;
+
+  markAllButton.disabled =
+    false;
+
+  setFormError(
+    $("#roll-call-form-error"),
+    ""
+  );
+
+  updateRollCallCounters();
+  refreshIcons();
+}
+
+function setRollCallRowStatus(
+  row,
+  status
+) {
+  if (
+    !row ||
+    ![
+      "presente",
+      "falta"
+    ].includes(
+      status
+    )
+  ) {
+    return;
+  }
+
+  row.dataset.status =
+    status;
+
+  $$(
+    "[data-roll-call-status]",
+    row
+  ).forEach(
+    (button) => {
+      const active =
+        button.dataset
+          .rollCallStatus ===
+        status;
+
+      button.classList.toggle(
+        "active",
+        active
+      );
+
+      button.setAttribute(
+        "aria-pressed",
+        String(active)
+      );
+    }
+  );
+}
+
+function updateRollCallCounters() {
+  const rows =
+    $$(
+      ".roll-call-row",
+      $("#roll-call-list")
+    );
+
+  const present =
+    rows.filter(
+      (row) =>
+        row.dataset.status ===
+        "presente"
+    ).length;
+
+  $("#roll-call-total").textContent =
+    rows.length;
+
+  $("#roll-call-present").textContent =
+    present;
+
+  $("#roll-call-absent").textContent =
+    rows.length -
+    present;
+}
+
+async function submitRollCall(
+  event,
+  state
+) {
+  event.preventDefault();
+
+  const form =
+    event.currentTarget;
+
+  const button =
+    $("#save-roll-call-button");
+
+  const values =
+    Object.fromEntries(
+      new FormData(
+        form
+      )
+    );
+
+  const rows =
+    $$(
+      ".roll-call-row",
+      $("#roll-call-list")
+    );
+
+  if (
+    !values.class_id ||
+    !values.subject_id ||
+    !values.attendance_date ||
+    rows.length ===
+      0
+  ) {
+    setFormError(
+      $("#roll-call-form-error"),
+      "Selecione turma, disciplina e data antes de salvar a chamada."
+    );
+
+    return;
+  }
+
+  const unauthorized =
+    state.profile.role ===
+      "professor" &&
+    rows.some(
+      (row) =>
+        !teacherCanManageStudentSubject(
+          state,
+          row.dataset
+            .studentId,
+          values.subject_id
+        )
+    );
+
+  if (unauthorized) {
+    setFormError(
+      $("#roll-call-form-error"),
+      "Você só pode fazer chamada nas turmas e matérias atribuídas a você."
+    );
+
+    return;
+  }
+
+  const existingByStudent =
+    new Map(
+      state.attendance
+        .filter(
+          (record) =>
+            record.subject_id ===
+              values.subject_id &&
+            record.attendance_date ===
+              values.attendance_date
+        )
+        .map(
+          (record) => [
+            record.student_id,
+            record
+          ]
+        )
+    );
+
+  const payload =
+    rows.map(
+      (row) => ({
+        aluno_id:
+          row.dataset
+            .studentId,
+
+        disciplina_id:
+          values.subject_id,
+
+        data_aula:
+          values.attendance_date,
+
+        situacao:
+          row.dataset.status,
+
+        observacoes:
+          existingByStudent.get(
+            row.dataset
+              .studentId
+          )?.notes ??
+          null,
+
+        professor_id:
+          state.profile.id
+      })
+    );
+
+  setFormError(
+    $("#roll-call-form-error"),
+    ""
+  );
+
+  setButtonLoading(
+    button,
+    true,
+    "Salvando..."
+  );
+
+  const { error } =
+    await state.supabase
+      .from(
+        "frequencia"
+      )
+      .upsert(
+        payload,
+        {
+          onConflict:
+            "aluno_id,disciplina_id,data_aula"
+        }
+      );
+
+  setButtonLoading(
+    button,
+    false,
+    "Salvar chamada"
+  );
+
+  if (error) {
+    setFormError(
+      $("#roll-call-form-error"),
+      error.message
+    );
+
+    return;
+  }
+
+  await loadAllData(
+    state
+  );
+
+  $("#attendance-class-filter").value =
+    values.class_id;
+
+  $("#attendance-date-filter").value =
+    values.attendance_date;
+
+  renderAttendance(
+    state
+  );
+
+  navigateTo(
+    state,
+    "frequencia"
+  );
+
+  toast(
+    "Chamada salva",
+    `${rows.length} alunos foram registrados de uma vez.`,
+    "success"
+  );
 }
 
 function openAttendanceDialog(
@@ -4019,8 +4771,7 @@ async function submitAttendance(event, state) {
         form
       )
     );
-
-  if (
+      if (
     state.profile.role ===
       "professor" &&
     !teacherCanManageStudentSubject(
@@ -4301,6 +5052,11 @@ function navigateTo(state, view) {
     frequencia: [
       "Gestão acadêmica",
       "Frequência"
+    ],
+
+    chamada: [
+      "Gestão acadêmica",
+      "Fazer chamada"
     ],
 
     boletim: [
